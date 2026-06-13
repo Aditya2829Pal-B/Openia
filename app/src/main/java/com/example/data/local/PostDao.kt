@@ -1,0 +1,89 @@
+package com.example.data.local
+
+import androidx.room.*
+import com.example.data.model.*
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface PostDao {
+    @Query("SELECT * FROM posts ORDER BY timestamp DESC")
+    fun getAllPostsFlow(): Flow<List<PostEntity>>
+
+    @Query("SELECT * FROM posts WHERE id = :id")
+    fun getPostByIdFlow(id: Int): Flow<PostEntity?>
+
+    @Query("SELECT * FROM posts WHERE id = :id")
+    suspend fun getPostById(id: Int): PostEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPost(post: PostEntity): Long
+
+    @Update
+    suspend fun updatePost(post: PostEntity)
+
+    @Delete
+    suspend fun deletePost(post: PostEntity)
+
+    @Query("SELECT * FROM comments WHERE postId = :postId ORDER BY timestamp ASC")
+    fun getCommentsByPostFlow(postId: Int): Flow<List<CommentEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertComment(comment: CommentEntity): Long
+
+    @Delete
+    suspend fun deleteComment(comment: CommentEntity)
+
+    @Query("SELECT * FROM user_reactions WHERE postId = :postId")
+    fun getUserReactionsForPostFlow(postId: Int): Flow<List<UserReactionEntity>>
+
+    @Query("SELECT * FROM user_reactions WHERE postId = :postId")
+    suspend fun getUserReactionsForPost(postId: Int): List<UserReactionEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertReaction(reaction: UserReactionEntity)
+
+    @Delete
+    suspend fun deleteReaction(reaction: UserReactionEntity)
+
+    @Query("SELECT * FROM user_reactions WHERE postId = :postId AND reactionType = :reactionType")
+    suspend fun getSpecificReaction(postId: Int, reactionType: String): UserReactionEntity?
+
+    @Query("SELECT * FROM comment_reactions WHERE commentId = :commentId")
+    fun getReactionsForCommentFlow(commentId: Int): Flow<List<CommentReactionEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCommentReaction(reaction: CommentReactionEntity)
+
+    @Delete
+    suspend fun deleteCommentReaction(reaction: CommentReactionEntity)
+
+    @Query("SELECT * FROM comment_reactions WHERE commentId = :commentId AND reactionType = :reactionType")
+    suspend fun getSpecificCommentReaction(commentId: Int, reactionType: String): CommentReactionEntity?
+
+    @Query("SELECT * FROM comments WHERE id = :id")
+    suspend fun getCommentById(id: Int): CommentEntity?
+
+    @Update
+    suspend fun updateComment(comment: CommentEntity)
+
+    @Query("SELECT * FROM user_profile WHERE username = :username")
+    fun getUserProfileFlow(username: String): Flow<UserProfileEntity?>
+
+    @Query("SELECT * FROM user_profile WHERE username = :username")
+    suspend fun getUserProfile(username: String): UserProfileEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUserProfile(profile: UserProfileEntity)
+
+    @Query("SELECT * FROM follows")
+    fun getFollowsFlow(): Flow<List<FollowEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFollow(follow: FollowEntity)
+
+    @Delete
+    suspend fun deleteFollow(follow: FollowEntity)
+
+    @Query("SELECT * FROM follows WHERE followedAuthor = :authorName")
+    suspend fun getFollowByAuthor(authorName: String): FollowEntity?
+}

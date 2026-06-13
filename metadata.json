@@ -1,0 +1,6 @@
+{
+  "name": "Openia",
+  "description": "A trending opinion-giving and problem-sharing social platform like X and Reddit with server-side Gemini AI trend analysis, consensus synthesis, and actionable problem solving.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
