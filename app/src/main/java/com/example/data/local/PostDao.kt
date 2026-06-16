@@ -9,6 +9,9 @@ interface PostDao {
     @Query("SELECT * FROM posts ORDER BY timestamp DESC")
     fun getAllPostsFlow(): Flow<List<PostEntity>>
 
+    @Query("SELECT * FROM posts ORDER BY timestamp DESC")
+    fun getPagingSource(): androidx.paging.PagingSource<Int, PostEntity>
+
     @Query("SELECT * FROM posts WHERE id = :id")
     fun getPostByIdFlow(id: Int): Flow<PostEntity?>
 
@@ -86,4 +89,25 @@ interface PostDao {
 
     @Query("SELECT * FROM follows WHERE followedAuthor = :authorName")
     suspend fun getFollowByAuthor(authorName: String): FollowEntity?
+
+    @Query("SELECT * FROM bookmarks ORDER BY timestamp DESC")
+    fun getAllBookmarksFlow(): Flow<List<BookmarkEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBookmark(bookmark: BookmarkEntity)
+
+    @Delete
+    suspend fun deleteBookmark(bookmark: BookmarkEntity)
+
+    @Query("SELECT * FROM bookmarks WHERE postId = :postId")
+    suspend fun getBookmarkByPostId(postId: Int): BookmarkEntity?
+
+    @Query("SELECT * FROM drafts ORDER BY timestamp DESC")
+    fun getAllDraftsFlow(): Flow<List<DraftEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDraft(draft: DraftEntity)
+
+    @Query("DELETE FROM drafts WHERE id = :id")
+    suspend fun deleteDraftById(id: Int)
 }

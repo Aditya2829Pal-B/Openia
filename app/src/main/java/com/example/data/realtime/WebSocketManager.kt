@@ -16,7 +16,7 @@ sealed class RealTimeEvent {
 }
 
 class WebSocketManager(
-    private val tokenStorage: EncryptedTokenStorage
+    private val tokenStorage: com.example.core.security.SessionManager
 ) {
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
@@ -27,7 +27,7 @@ class WebSocketManager(
     val events: SharedFlow<RealTimeEvent> = _events.asSharedFlow()
 
     fun connect(url: String) {
-        val token = tokenStorage.getToken() ?: return
+        val token = tokenStorage.getAuthToken() ?: return
         val request = Request.Builder()
             .url(url)
             .addHeader("Authorization", "Bearer \$token")

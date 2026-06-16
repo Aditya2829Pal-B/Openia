@@ -10,6 +10,11 @@ import com.example.data.model.UserReactionEntity
 import com.example.data.model.CommentReactionEntity
 import com.example.data.model.UserProfileEntity
 import com.example.data.model.FollowEntity
+import com.example.data.model.BookmarkEntity
+import com.example.data.model.DraftEntity
+
+import com.example.data.realtime.PendingOperation
+import com.example.data.realtime.PendingOperationDao
 
 @Database(
     entities = [
@@ -18,13 +23,17 @@ import com.example.data.model.FollowEntity
         UserReactionEntity::class,
         CommentReactionEntity::class,
         UserProfileEntity::class,
-        FollowEntity::class
+        FollowEntity::class,
+        PendingOperation::class,
+        BookmarkEntity::class,
+        DraftEntity::class
     ],
-    version = 5,
+    version = 7,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun postDao(): PostDao
+    abstract fun pendingOperationDao(): PendingOperationDao
 
     companion object {
         @Volatile

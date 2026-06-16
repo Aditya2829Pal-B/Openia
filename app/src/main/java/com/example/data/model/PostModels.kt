@@ -69,3 +69,19 @@ data class UserProfileEntity(
 data class FollowEntity(
     @PrimaryKey val followedAuthor: String
 )
+
+@Entity(tableName = "bookmarks")
+data class BookmarkEntity(
+    @PrimaryKey val postId: Int,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "drafts")
+data class DraftEntity(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val title: String,
+    val content: String,
+    val category: String,
+    val type: String, // "OPINION" or "PROBLEM"
+    val timestamp: Long = System.currentTimeMillis()
+)

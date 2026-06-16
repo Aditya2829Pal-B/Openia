@@ -1,5 +1,8 @@
 package com.example.data.repository
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.data.local.PostDao
 import com.example.data.model.CommentEntity
 import com.example.data.model.PostEntity
@@ -8,27 +11,88 @@ import kotlinx.coroutines.flow.Flow
 
 import com.example.data.model.UserProfileEntity
 import com.example.data.model.FollowEntity
+import com.example.data.model.BookmarkEntity
+import com.example.data.model.DraftEntity
 
-class PostRepository(private val postDao: PostDao) {
+import com.example.data.realtime.PendingOperation
+import com.example.data.realtime.PendingOperationDao
+import org.json.JSONObject
+
+class PostRepository(
+    private val postDao: PostDao,
+    private val pendingOperationDao: PendingOperationDao
+) {
 
     val allPosts: Flow<List<PostEntity>> = postDao.getAllPostsFlow()
+    
+    fun getPagedPosts(): Flow<PagingData<PostEntity>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 20,
+                enablePlaceholders = false
+            ),
+            pagingSourceFactory = { postDao.getPagingSource() }
+        ).flow
+    }
 
     val myProfile: Flow<UserProfileEntity?> = postDao.getUserProfileFlow("You")
 
     val allFollows: Flow<List<FollowEntity>> = postDao.getFollowsFlow()
+    
+    val allBookmarks: Flow<List<BookmarkEntity>> = postDao.getAllBookmarksFlow()
+    
+    val allDrafts: Flow<List<DraftEntity>> = postDao.getAllDraftsFlow()
+
+    suspend fun toggleBookmark(postId: Int) {
+        val existing = postDao.getBookmarkByPostId(postId)
+        if (existing != null) {
+            postDao.deleteBookmark(existing)
+            enqueueOperation("REMOVE_BOOKMARK", JSONObject().apply { put("postId", postId) })
+        } else {
+            postDao.insertBookmark(BookmarkEntity(postId))
+            enqueueOperation("ADD_BOOKMARK", JSONObject().apply { put("postId", postId) })
+        }
+    }
+    
+    suspend fun saveDraft(draft: DraftEntity) {
+        postDao.insertDraft(draft)
+        // Note: We might only want to enqueue once Draft is published
+    }
+    
+    suspend fun deleteDraft(id: Int) {
+        postDao.deleteDraftById(id)
+    }
 
     suspend fun getProfileDirect(username: String): UserProfileEntity? = postDao.getUserProfile(username)
 
+    private suspend fun enqueueOperation(type: String, payload: JSONObject) {
+        pendingOperationDao.insertOperation(
+            PendingOperation(
+                operationType = type,
+                payloadJson = payload.toString()
+            )
+        )
+    }
+
     suspend fun updateProfile(profile: UserProfileEntity) {
         postDao.insertUserProfile(profile)
+        enqueueOperation("UPDATE_PROFILE", JSONObject().apply {
+            put("username", profile.username)
+        })
     }
 
     suspend fun toggleFollow(authorName: String) {
         val existing = postDao.getFollowByAuthor(authorName)
         if (existing != null) {
             postDao.deleteFollow(existing)
+            enqueueOperation("UNFOLLOW_USER", JSONObject().apply {
+                put("author", authorName)
+            })
         } else {
             postDao.insertFollow(FollowEntity(authorName))
+            enqueueOperation("FOLLOW_USER", JSONObject().apply {
+                put("author", authorName)
+            })
         }
     }
 
@@ -42,11 +106,28 @@ class PostRepository(private val postDao: PostDao) {
     fun getUserReactionsForPost(postId: Int): Flow<List<UserReactionEntity>> =
         postDao.getUserReactionsForPostFlow(postId)
 
-    suspend fun createPost(post: PostEntity): Long = postDao.insertPost(post)
+    suspend fun createPost(post: PostEntity): Long {
+        val id = postDao.insertPost(post)
+        enqueueOperation("CREATE_POST", JSONObject().apply {
+            put("id", id)
+            put("title", post.title)
+        })
+        return id
+    }
 
-    suspend fun deletePost(post: PostEntity) = postDao.deletePost(post)
+    suspend fun deletePost(post: PostEntity) {
+        postDao.deletePost(post)
+        enqueueOperation("DELETE_POST", JSONObject().apply {
+            put("id", post.id)
+        })
+    }
 
-    suspend fun updatePost(post: PostEntity) = postDao.updatePost(post)
+    suspend fun updatePost(post: PostEntity) {
+        postDao.updatePost(post)
+        enqueueOperation("UPDATE_POST", JSONObject().apply {
+            put("id", post.id)
+        })
+    }
 
     suspend fun createComment(comment: CommentEntity) {
         postDao.insertComment(comment)
@@ -55,6 +136,10 @@ class PostRepository(private val postDao: PostDao) {
         if (post != null) {
             postDao.updatePost(post.copy(commentCount = post.commentCount + 1))
         }
+        enqueueOperation("CREATE_COMMENT", JSONObject().apply {
+            put("postId", comment.postId)
+            put("content", comment.content)
+        })
     }
 
     suspend fun deleteComment(comment: CommentEntity) {
@@ -63,6 +148,9 @@ class PostRepository(private val postDao: PostDao) {
         if (post != null) {
             postDao.updatePost(post.copy(commentCount = maxOf(0, post.commentCount - 1)))
         }
+        enqueueOperation("DELETE_COMMENT", JSONObject().apply {
+            put("commentId", comment.id)
+        })
     }
 
     suspend fun toggleAgree(postId: Int) {
@@ -94,6 +182,11 @@ class PostRepository(private val postDao: PostDao) {
                 disagreeCount = newDisagreeCount
             )
         )
+        
+        enqueueOperation("TOGGLE_REACTION", JSONObject().apply {
+            put("postId", postId)
+            put("reactionType", "AGREE")
+        })
     }
 
     suspend fun toggleDisagree(postId: Int) {
@@ -125,6 +218,11 @@ class PostRepository(private val postDao: PostDao) {
                 disagreeCount = newDisagreeCount
             )
         )
+
+        enqueueOperation("TOGGLE_REACTION", JSONObject().apply {
+            put("postId", postId)
+            put("reactionType", "DISAGREE")
+        })
     }
 
     suspend fun toggleUpvote(postId: Int) {
@@ -153,6 +251,11 @@ class PostRepository(private val postDao: PostDao) {
                 downvotesCount = newDownCount
             )
         )
+        
+        enqueueOperation("TOGGLE_REACTION", JSONObject().apply {
+            put("postId", postId)
+            put("reactionType", "UPVOTE")
+        })
     }
 
     suspend fun toggleDownvote(postId: Int) {
@@ -181,6 +284,11 @@ class PostRepository(private val postDao: PostDao) {
                 downvotesCount = newDownCount
             )
         )
+        
+        enqueueOperation("TOGGLE_REACTION", JSONObject().apply {
+            put("postId", postId)
+            put("reactionType", "DOWNVOTE")
+        })
     }
 
     suspend fun toggleEmpathy(postId: Int) {
@@ -198,6 +306,11 @@ class PostRepository(private val postDao: PostDao) {
         }
 
         postDao.updatePost(post.copy(empathyCount = newEmpathyCount))
+        
+        enqueueOperation("TOGGLE_REACTION", JSONObject().apply {
+            put("postId", postId)
+            put("reactionType", "EMPATHY")
+        })
     }
 
     suspend fun saveAiAnalysis(postId: Int, summary: String?, solutions: String?, consensus: String?) {
@@ -240,6 +353,11 @@ class PostRepository(private val postDao: PostDao) {
                 downvotesCount = newDownCount
             )
         )
+        
+        enqueueOperation("TOGGLE_COMMENT_REACTION", JSONObject().apply {
+            put("commentId", commentId)
+            put("reactionType", "UPVOTE")
+        })
     }
 
     suspend fun toggleCommentDownvote(commentId: Int) {
@@ -268,5 +386,10 @@ class PostRepository(private val postDao: PostDao) {
                 downvotesCount = newDownCount
             )
         )
+        
+        enqueueOperation("TOGGLE_COMMENT_REACTION", JSONObject().apply {
+            put("commentId", commentId)
+            put("reactionType", "DOWNVOTE")
+        })
     }
 }

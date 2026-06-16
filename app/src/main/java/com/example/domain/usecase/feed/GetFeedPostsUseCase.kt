@@ -1,5 +1,7 @@
 package com.example.domain.usecase.feed
 
+import androidx.paging.PagingData
+import androidx.paging.filter
 import com.example.data.model.PostEntity
 import com.example.data.repository.PostRepository
 import kotlinx.coroutines.flow.Flow
@@ -7,6 +9,58 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 class GetFeedPostsUseCase(private val repository: PostRepository) {
+
+    fun executePaged(
+        selectedType: Flow<String>,
+        selectedCategory: Flow<String>,
+        searchQuery: Flow<String>,
+        followedOnly: Flow<Boolean>,
+        allFollows: Flow<List<String>>
+    ): Flow<PagingData<PostEntity>> {
+        return combine(
+            repository.getPagedPosts(),
+            selectedType,
+            selectedCategory,
+            searchQuery,
+            followedOnly,
+            allFollows
+        ) { args ->
+            @Suppress("UNCHECKED_CAST")
+            val pagedData = args[0] as PagingData<PostEntity>
+            val type = args[1] as String
+            val category = args[2] as String
+            val query = args[3] as String
+            val followedOnlyFlag = args[4] as Boolean
+            @Suppress("UNCHECKED_CAST")
+            val followsList = args[5] as List<String>
+            
+            pagedData.filter { post ->
+                var matches = true
+                
+                if (followedOnlyFlag) {
+                    matches = matches && followsList.contains(post.author)
+                }
+
+                if (type != "ALL") {
+                    matches = matches && post.postType == type
+                }
+                
+                if (category != "ALL") {
+                    matches = matches && post.category.equals(category, ignoreCase = true)
+                }
+                
+                if (query.isNotEmpty()) {
+                    val q = query.lowercase()
+                    matches = matches && (
+                        post.title.lowercase().contains(q) ||
+                        post.content.lowercase().contains(q) ||
+                        post.tags.lowercase().contains(q)
+                    )
+                }
+                matches
+            }
+        }
+    }
 
     fun execute(
         selectedType: Flow<String>,

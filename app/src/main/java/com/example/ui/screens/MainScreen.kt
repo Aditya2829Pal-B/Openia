@@ -36,9 +36,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.LoadState
 import com.example.data.model.CommentEntity
 import com.example.data.model.PostEntity
 import com.example.ui.viewmodel.PostViewModel
+import com.example.core.error.GlobalErrorHandler
+import kotlinx.coroutines.flow.collectLatest
 import com.example.ui.components.AdvancedProfileCard
 import com.example.ui.components.ReputationGlowingIndicator
 import java.text.SimpleDateFormat
@@ -52,13 +56,16 @@ val CosmicInput = Color(0xFF161A24)
 val NeoCyan = Color(0xFF00E5FF)
 val SolarCoral = Color(0xFFFF5722)
 val SoftText = Color(0xFF90A4AE)
+val SoftBorder = Color(0xFF37474F)
 val HeaderText = Color(0xFFECEFF1)
 val AccentPurple = Color(0xFF7C4DFF)
+val NeoRed = Color(0xFFFF1744)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: PostViewModel) {
     val posts by viewModel.posts.collectAsStateWithLifecycle()
+    val pagedPosts = viewModel.pagedPosts.collectAsLazyPagingItems()
     val currentPost by viewModel.currentPost.collectAsStateWithLifecycle()
     val currentComments by viewModel.currentComments.collectAsStateWithLifecycle()
     val reactions by viewModel.currentReactions.collectAsStateWithLifecycle()
@@ -74,12 +81,31 @@ fun MainScreen(viewModel: PostViewModel) {
     val authorReputations by viewModel.authorReputations.collectAsStateWithLifecycle()
     val advancedReputations by viewModel.advancedReputations.collectAsStateWithLifecycle()
     val myProfile by viewModel.myProfile.collectAsStateWithLifecycle()
+    val drafts by viewModel.drafts.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var showIntelligenceMap by remember { mutableStateOf(false) }
     var activeNavTab by remember { mutableStateOf(0) } // 0 = Feed, 1 = My Profile
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(Unit) {
+        GlobalErrorHandler.errorEvents.collectLatest { event ->
+            val message = event.error.message ?: "An unexpected error occurred"
+            val actionLabel = if (event.retryAction != null) "Retry" else null
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = actionLabel,
+                duration = androidx.compose.material3.SnackbarDuration.Long
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                event.retryAction?.invoke()
+            }
+        }
+    }
 
     var draftImageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -171,13 +197,26 @@ fun MainScreen(viewModel: PostViewModel) {
 
                             // Post feed list
                             PullToRefreshBox(
-                                isRefreshing = isRefreshing,
-                                onRefresh = { viewModel.refreshFeed() },
+                                isRefreshing = isRefreshing || pagedPosts.loadState.refresh is LoadState.Loading,
+                                onRefresh = { 
+                                    viewModel.refreshFeed()
+                                    pagedPosts.refresh()
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f)
                             ) {
-                                if (posts.isEmpty()) {
+                                if (pagedPosts.loadState.refresh is LoadState.Error) {
+                                    Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                            Text("Error loading data", color = Color.White)
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Button(onClick = { pagedPosts.retry() }) {
+                                                Text("Retry")
+                                            }
+                                        }
+                                    }
+                                } else if (pagedPosts.itemCount == 0 && pagedPosts.loadState.refresh is LoadState.NotLoading) {
                                     Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                                         EmptyStateView(searchQuery, selectedCategory, selectedType)
                                     }
@@ -191,21 +230,44 @@ fun MainScreen(viewModel: PostViewModel) {
                                             TrendSummaryHeader(posts, selectedType)
                                         }
     
-                                        items(posts, key = { it.id }) { post ->
-                                            Box(modifier = Modifier.padding(bottom = 8.dp)) {
-                                                PostCard(
-                                                    post = post,
-                                                    followedAuthors = allFollows,
-                                                    reputations = authorReputations,
-                                                    advancedReputations = advancedReputations,
-                                                    onFollowToggle = { viewModel.toggleFollow(it) },
-                                                    onCardClick = { viewModel.selectPost(post.id) },
-                                                    onAgreeClick = { viewModel.agreePost(post.id) },
-                                                    onDisagreeClick = { viewModel.disagreePost(post.id) },
-                                                    onUpvoteClick = { viewModel.upvotePost(post.id) },
-                                                    onDownvoteClick = { viewModel.downvotePost(post.id) },
-                                                    onEmpathyClick = { viewModel.empathyPost(post.id) }
-                                                )
+                                        items(
+                                            count = pagedPosts.itemCount,
+                                            key = { index -> pagedPosts[index]?.id ?: "placeholder_$index" }
+                                        ) { index ->
+                                            val post = pagedPosts[index]
+                                            if (post != null) {
+                                                Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                                                    PostCard(
+                                                        post = post,
+                                                        followedAuthors = allFollows,
+                                                        reputations = authorReputations,
+                                                        advancedReputations = advancedReputations,
+                                                        isBookmarked = bookmarks.any { it.postId == post.id },
+                                                        onFollowToggle = { viewModel.toggleFollow(it) },
+                                                        onBookmarkToggle = { viewModel.toggleBookmark(post.id) },
+                                                        onCardClick = { viewModel.selectPost(post.id) },
+                                                        onAgreeClick = { viewModel.agreePost(post.id) },
+                                                        onDisagreeClick = { viewModel.disagreePost(post.id) },
+                                                        onUpvoteClick = { viewModel.upvotePost(post.id) },
+                                                        onDownvoteClick = { viewModel.downvotePost(post.id) },
+                                                        onEmpathyClick = { viewModel.empathyPost(post.id) }
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        
+                                        if (pagedPosts.loadState.append is LoadState.Loading) {
+                                            item {
+                                                Box(
+                                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    CircularProgressIndicator(color = NeoCyan)
+                                                }
+                                            }
+                                        } else if (pagedPosts.loadState.append is LoadState.Error) {
+                                            item {
+                                                Text("Error loading more items. Tap to retry.", color = Color.Red, modifier = Modifier.clickable { pagedPosts.retry() })
                                             }
                                         }
                                     }
@@ -417,6 +479,11 @@ fun MainScreen(viewModel: PostViewModel) {
                     viewModel.publishPost(title, content, type, cat, tags, imageUri)
                     showCreateDialog = false
                     draftImageUri = null
+                },
+                onSaveDraft = { title, content, type, cat ->
+                    viewModel.saveDraft(title, content, type, cat)
+                    showCreateDialog = false
+                    draftImageUri = null
                 }
             )
         }
@@ -430,6 +497,11 @@ fun MainScreen(viewModel: PostViewModel) {
                 GlobalIntelligenceMapOverlay(onClose = { showIntelligenceMap = false })
             }
         }
+
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 60.dp)
+        )
     }
 }
 
@@ -816,7 +888,9 @@ fun PostCard(
     followedAuthors: List<String> = emptyList(),
     reputations: Map<String, Int> = emptyMap(),
     advancedReputations: Map<String, com.example.domain.model.AdvancedReputation> = emptyMap(),
+    isBookmarked: Boolean = false,
     onFollowToggle: ((String) -> Unit)? = null,
+    onBookmarkToggle: (() -> Unit)? = null,
     onCardClick: () -> Unit,
     onAgreeClick: () -> Unit,
     onDisagreeClick: () -> Unit,
@@ -901,19 +975,34 @@ fun PostCard(
                     }
                 }
 
-                // Category Tag Pill
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(accentColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = post.category,
-                        color = accentColor,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Category Tag Pill
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(accentColor.copy(alpha = 0.15f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = post.category,
+                            color = accentColor,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (onBookmarkToggle != null) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(
+                            imageVector = if (isBookmarked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Bookmark",
+                            tint = if (isBookmarked) AccentPurple else SoftText,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clickable { onBookmarkToggle() }
+                                .padding(2.dp)
+                        )
+                    }
                 }
             }
 
@@ -2031,7 +2120,8 @@ fun CreatePostDialog(
     onPickImage: () -> Unit,
     onClearImage: () -> Unit,
     onDismiss: () -> Unit,
-    onPublish: (String, String, String, String, String, String?) -> Unit
+    onPublish: (String, String, String, String, String, String?) -> Unit,
+    onSaveDraft: ((String, String, String, String) -> Unit)? = null
 ) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
@@ -2256,29 +2346,50 @@ fun CreatePostDialog(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Publish action
-                Button(
-                    onClick = {
-                        if (title.trim().isNotEmpty() && content.trim().isNotEmpty()) {
-                            onPublish(title, content, postType, category, tags, selectedImageUri?.toString())
+                // Actions
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (onSaveDraft != null) {
+                        OutlinedButton(
+                            onClick = {
+                                if (title.trim().isNotEmpty() || content.trim().isNotEmpty()) {
+                                    onSaveDraft(title, content, postType, category)
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = BorderStroke(1.dp, SoftBorder)
+                        ) {
+                            Text("Save Draft", fontWeight = FontWeight.Bold)
                         }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(48.dp)
-                        .testTag("publish_thread_btn"),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (postType == "OPINION") NeoCyan else SolarCoral,
-                        contentColor = CosmicBlack
-                    ),
-                    shape = RoundedCornerShape(10.dp),
-                    enabled = title.trim().isNotEmpty() && content.trim().isNotEmpty()
-                ) {
-                    Text(
-                        text = "PUBLISH THREAD",
-                        fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.5.sp
-                    )
+                    }
+
+                    Button(
+                        onClick = {
+                            if (title.trim().isNotEmpty() && content.trim().isNotEmpty()) {
+                                onPublish(title, content, postType, category, tags, selectedImageUri?.toString())
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .height(48.dp)
+                            .testTag("publish_thread_btn"),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (postType == "OPINION") NeoCyan else SolarCoral,
+                            contentColor = CosmicBlack
+                        ),
+                        shape = RoundedCornerShape(10.dp),
+                        enabled = title.trim().isNotEmpty() && content.trim().isNotEmpty()
+                    ) {
+                        Text(
+                            text = "PUBLISH THREAD",
+                            fontWeight = FontWeight.ExtraBold,
+                            letterSpacing = 0.5.sp
+                        )
+                    }
                 }
             }
         }

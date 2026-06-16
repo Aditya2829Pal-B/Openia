@@ -19,9 +19,13 @@ import com.example.domain.usecase.profile.GetUserProfileUseCase
 import com.example.domain.usecase.profile.UpdateUserProfileUseCase
 import com.example.domain.usecase.reputation.CalculateUserReputationUseCase
 import com.example.domain.usecase.settings.ManageSettingsUseCase
+import androidx.paging.cachedIn
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.plus
+import kotlinx.coroutines.CoroutineExceptionHandler
+import com.example.core.error.GlobalErrorHandler
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PostViewModel(
@@ -42,6 +46,12 @@ class PostViewModel(
     private val getTrendMetricsUseCase: GetTrendMetricsUseCase,
     private val authenticateUserUseCase: AuthenticateUserUseCase
 ) : AndroidViewModel(application) {
+
+    private val exceptionHandler = CoroutineExceptionHandler { _, exception ->
+        GlobalErrorHandler.handleThrowable(exception)
+    }
+
+    private val safeScope = viewModelScope.plus(exceptionHandler)
 
     // Filter states
     private val _selectedType = MutableStateFlow("ALL") // "ALL", "OPINION", "PROBLEM"
@@ -69,6 +79,14 @@ class PostViewModel(
         )
 
     // Combined filtered posts flow - delegating directly to UseCase!
+    val pagedPosts: kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<PostEntity>> = getFeedPostsUseCase.executePaged(
+        selectedType = _selectedType,
+        selectedCategory = _selectedCategory,
+        searchQuery = _searchQuery,
+        followedOnly = _followedOnly,
+        allFollows = allFollows
+    ).cachedIn(viewModelScope)
+
     val posts: StateFlow<List<PostEntity>> = getFeedPostsUseCase.execute(
         selectedType = _selectedType,
         selectedCategory = _selectedCategory,
@@ -89,7 +107,7 @@ class PostViewModel(
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     fun refreshFeed() {
-        viewModelScope.launch {
+        safeScope.launch {
             _isRefreshing.value = true
             // Simulate network fetch and local database sync
             kotlinx.coroutines.delay(1000)
@@ -130,6 +148,20 @@ class PostViewModel(
             initialValue = null
         )
 
+    val drafts: StateFlow<List<com.example.data.model.DraftEntity>> = repository.allDrafts
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    val bookmarks: StateFlow<List<com.example.data.model.BookmarkEntity>> = repository.allBookmarks
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
     // Reputation Map calculated elegantly through UseCase
     val authorReputations: StateFlow<Map<String, Int>> = calculateUserReputationUseCase.execute()
         .stateIn(
@@ -166,7 +198,7 @@ class PostViewModel(
     }
 
     fun toggleFollow(authorName: String) {
-        viewModelScope.launch {
+        safeScope.launch {
             toggleFollowUseCase.execute(authorName)
         }
     }
@@ -199,23 +231,23 @@ class PostViewModel(
 
     // Reaction Triggers delegating to UseCase
     fun agreePost(postId: Int) {
-        viewModelScope.launch { togglePostReactionUseCase.execute(postId, "AGREE") }
+        safeScope.launch { togglePostReactionUseCase.execute(postId, "AGREE") }
     }
 
     fun disagreePost(postId: Int) {
-        viewModelScope.launch { togglePostReactionUseCase.execute(postId, "DISAGREE") }
+        safeScope.launch { togglePostReactionUseCase.execute(postId, "DISAGREE") }
     }
 
     fun upvotePost(postId: Int) {
-        viewModelScope.launch { togglePostReactionUseCase.execute(postId, "UPVOTE") }
+        safeScope.launch { togglePostReactionUseCase.execute(postId, "UPVOTE") }
     }
 
     fun downvotePost(postId: Int) {
-        viewModelScope.launch { togglePostReactionUseCase.execute(postId, "DOWNVOTE") }
+        safeScope.launch { togglePostReactionUseCase.execute(postId, "DOWNVOTE") }
     }
 
     fun empathyPost(postId: Int) {
-        viewModelScope.launch { togglePostReactionUseCase.execute(postId, "EMPATHY") }
+        safeScope.launch { togglePostReactionUseCase.execute(postId, "EMPATHY") }
     }
 
     // Post creation delegating to UseCase & checking safety with Moderation UseCase
@@ -232,7 +264,7 @@ class PostViewModel(
             // Under enterprise bounds, we abort creating toxic posts
             return
         }
-        viewModelScope.launch {
+        safeScope.launch {
             createPostUseCase.execute(title, content, type, category, tags, imageUri, author)
         }
     }
@@ -242,7 +274,7 @@ class PostViewModel(
         if (!moderateContentUseCase.isContentSafe("", content)) {
             return
         }
-        viewModelScope.launch {
+        safeScope.launch {
             // we will bypass use case for parentCommentId because it's simpler
             val comment = CommentEntity(
                 postId = postId,
@@ -257,21 +289,21 @@ class PostViewModel(
     }
 
     fun upvoteComment(commentId: Int) {
-        viewModelScope.launch { repository.toggleCommentUpvote(commentId) }
+        safeScope.launch { repository.toggleCommentUpvote(commentId) }
     }
 
     fun downvoteComment(commentId: Int) {
-        viewModelScope.launch { repository.toggleCommentDownvote(commentId) }
+        safeScope.launch { repository.toggleCommentDownvote(commentId) }
     }
 
     // Gemini API Action delegating to UseCase
     fun analyzeWithGemini(postId: Int) {
-        viewModelScope.launch {
+        safeScope.launch {
             _isAnalyzing.value = true
             try {
                 analyzePostContentUseCase.execute(postId)
             } catch (e: Exception) {
-                // Safe error mitigation
+                GlobalErrorHandler.handleThrowable(e, retryAction = { analyzeWithGemini(postId) })
             } finally {
                 _isAnalyzing.value = false
             }
@@ -361,6 +393,25 @@ class PostViewModel(
                 )
             }
         }
+    }
+
+    fun toggleBookmark(postId: Int) {
+        safeScope.launch { repository.toggleBookmark(postId) }
+    }
+    
+    fun saveDraft(title: String, content: String, type: String, category: String) {
+        safeScope.launch { 
+            repository.saveDraft(com.example.data.model.DraftEntity(
+                title = title,
+                content = content,
+                type = type,
+                category = category
+            ))
+        }
+    }
+    
+    fun deleteDraft(id: Int) {
+        safeScope.launch { repository.deleteDraft(id) }
     }
 }
 

@@ -37,7 +37,9 @@ fun ProfileTabContent(
     allFollows: List<String>,
     reputations: Map<String, Int>,
     advancedReputations: Map<String, AdvancedReputation> = emptyMap(),
-    posts: List<PostEntity> = emptyList()
+    posts: List<PostEntity> = emptyList(),
+    drafts: List<com.example.data.model.DraftEntity> = emptyList(),
+    bookmarks: List<com.example.data.model.BookmarkEntity> = emptyList()
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var isEditing by remember(myProfile) { mutableStateOf(false) }
@@ -405,11 +407,41 @@ fun ProfileTabContent(
             "Recent Posts" -> myPosts
             "Saved Posts" -> savedPosts
             "Recent Activity" -> posts.sortedByDescending { it.timestamp }.take(5)
-            "Bookmarks" -> posts.filter { it.commentCount > 0 }.take(4) // Mock bookmarks
+            "Bookmarks" -> posts.filter { p -> bookmarks.any { it.postId == p.id } }
             else -> emptyList()
         }
 
-        if (activeDashboard == "Drafts" || itemsToShow.isEmpty()) {
+        if (activeDashboard == "Drafts") {
+            if (drafts.isEmpty()) {
+                item {
+                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                        Text("No drafts found.", color = SoftText)
+                    }
+                }
+            } else {
+                items(drafts, key = { "draft_${it.id}" }) { draft ->
+                    Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = CosmicDark),
+                            border = BorderStroke(1.dp, SoftBorder)
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text(draft.title, color = Color.White, fontWeight = FontWeight.Bold)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(draft.content.take(100) + "...", color = SoftText, fontSize = 14.sp)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+                                    TextButton(onClick = { viewModel.deleteDraft(draft.id) }) {
+                                        Text("Delete", color = NeoRed)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (itemsToShow.isEmpty()) {
              item {
                  Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                      Text("No items found.", color = SoftText)
@@ -423,7 +455,9 @@ fun ProfileTabContent(
                          followedAuthors = allFollows,
                          reputations = reputations,
                          advancedReputations = advancedReputations,
+                         isBookmarked = bookmarks.any { it.postId == post.id },
                          onFollowToggle = { author -> viewModel.toggleFollow(author) },
+                         onBookmarkToggle = { viewModel.toggleBookmark(post.id) },
                          onCardClick = { viewModel.selectPost(post.id) },
                          onAgreeClick = { viewModel.agreePost(post.id) },
                          onDisagreeClick = { viewModel.disagreePost(post.id) },
