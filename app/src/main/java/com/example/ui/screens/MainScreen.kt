@@ -45,20 +45,10 @@ import com.example.core.error.GlobalErrorHandler
 import kotlinx.coroutines.flow.collectLatest
 import com.example.ui.components.AdvancedProfileCard
 import com.example.ui.components.ReputationGlowingIndicator
+import com.example.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Custom Cosmic Color Palette
-val CosmicBlack = Color(0xFF0B0E14)
-val CosmicDark = Color(0xFF131722)
-val CosmicGray = Color(0xFF1E2433)
-val CosmicInput = Color(0xFF161A24)
-val NeoCyan = Color(0xFF00E5FF)
-val SolarCoral = Color(0xFFFF5722)
-val SoftText = Color(0xFF90A4AE)
-val SoftBorder = Color(0xFF37474F)
-val HeaderText = Color(0xFFECEFF1)
-val AccentPurple = Color(0xFF7C4DFF)
 val NeoRed = Color(0xFFFF1744)
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -920,6 +910,7 @@ fun getReputationText(points: Int): String {
     }
 }
 
+@Composable
 fun getReputationColor(points: Int): Color {
     return when {
         points < 10 -> SoftText

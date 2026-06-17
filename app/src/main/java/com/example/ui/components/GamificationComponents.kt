@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.AdvancedReputation
 import com.example.ui.screens.*
+import com.example.ui.theme.*
 
 @Composable
 fun AdvancedProfileCard(
@@ -55,13 +56,17 @@ fun AdvancedProfileCard(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             // Prestige glowing rank ring
+            val neoCyan = NeoCyan
+            val solarCoral = SolarCoral
+            val softText = SoftText
+
             Box(
                 modifier = Modifier
                     .size(100.dp)
                     .drawBehind {
                         val stroke = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
                         val brush = Brush.sweepGradient(
-                            colors = listOf(NeoCyan, SolarCoral, SoftText, NeoCyan)
+                            colors = listOf(neoCyan, solarCoral, softText, neoCyan)
                         )
                         rotate(rotation) {
                             drawCircle(

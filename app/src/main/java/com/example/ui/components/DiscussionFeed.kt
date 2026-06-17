@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.ui.screens.PostCard
-import com.example.ui.screens.NeoCyan
+import com.example.ui.theme.NeoCyan
 import com.example.ui.viewmodel.PostViewModel
 
 @Composable
@@ -26,7 +26,7 @@ fun DiscussionFeed(
     val allFollows by viewModel.allFollows.collectAsStateWithLifecycle()
     val authorReputations by viewModel.authorReputations.collectAsStateWithLifecycle()
     val advancedReputations by viewModel.advancedReputations.collectAsStateWithLifecycle()
-    val bookmarks by viewModel.bookmarkedPostIds.collectAsStateWithLifecycle()
+    val bookmarks by viewModel.bookmarks.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -44,7 +44,7 @@ fun DiscussionFeed(
                     followedAuthors = allFollows,
                     reputations = authorReputations,
                     advancedReputations = advancedReputations,
-                    isBookmarked = bookmarks.contains(post.id),
+                    isBookmarked = bookmarks.any { it.postId == post.id },
                     onFollowToggle = { viewModel.toggleFollow(it) },
                     onBookmarkToggle = { viewModel.toggleBookmark(post.id) },
                     onCardClick = { viewModel.selectPost(post.id) },

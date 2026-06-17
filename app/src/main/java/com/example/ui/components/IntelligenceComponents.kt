@@ -21,11 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.model.PostEntity
-import com.example.ui.screens.CosmicDark
-import com.example.ui.screens.CosmicGray
-import com.example.ui.screens.NeoCyan
-import com.example.ui.screens.SoftText
-import com.example.ui.screens.SolarCoral
+import com.example.ui.theme.CosmicDark
+import com.example.ui.theme.CosmicGray
+import com.example.ui.theme.NeoCyan
+import com.example.ui.theme.SoftText
+import com.example.ui.theme.SolarCoral
 
 @Composable
 fun ConsensusIntelligenceCard(post: PostEntity) {
