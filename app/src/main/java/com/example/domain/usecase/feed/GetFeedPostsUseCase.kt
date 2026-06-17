@@ -6,8 +6,10 @@ import com.example.data.model.PostEntity
 import com.example.data.repository.PostRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 
+@kotlin.OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class GetFeedPostsUseCase(private val repository: PostRepository) {
 
     fun executePaged(
@@ -18,49 +20,51 @@ class GetFeedPostsUseCase(private val repository: PostRepository) {
         allFollows: Flow<List<String>>
     ): Flow<PagingData<PostEntity>> {
         return combine(
-            repository.getPagedPosts(),
             selectedType,
             selectedCategory,
             searchQuery,
             followedOnly,
             allFollows
-        ) { args ->
-            @Suppress("UNCHECKED_CAST")
-            val pagedData = args[0] as PagingData<PostEntity>
-            val type = args[1] as String
-            val category = args[2] as String
-            val query = args[3] as String
-            val followedOnlyFlag = args[4] as Boolean
-            @Suppress("UNCHECKED_CAST")
-            val followsList = args[5] as List<String>
-            
-            pagedData.filter { post ->
-                var matches = true
-                
-                if (followedOnlyFlag) {
-                    matches = matches && followsList.contains(post.author)
-                }
+        ) { type, category, query, followedOnlyFlag, followsList ->
+            FilterParams(type, category, query, followedOnlyFlag, followsList)
+        }.flatMapLatest { params ->
+            repository.getPagedPosts().map { pagedData ->
+                pagedData.filter { post ->
+                    var matches = true
+                    
+                    if (params.followedOnlyFlag) {
+                        matches = matches && params.followsList.contains(post.author)
+                    }
 
-                if (type != "ALL") {
-                    matches = matches && post.postType == type
+                    if (params.type != "ALL") {
+                        matches = matches && post.postType == params.type
+                    }
+                    
+                    if (params.category != "ALL") {
+                        matches = matches && post.category.equals(params.category, ignoreCase = true)
+                    }
+                    
+                    if (params.query.isNotEmpty()) {
+                        val q = params.query.lowercase()
+                        matches = matches && (
+                            post.title.lowercase().contains(q) ||
+                            post.content.lowercase().contains(q) ||
+                            post.tags.lowercase().contains(q)
+                        )
+                    }
+                    matches
                 }
-                
-                if (category != "ALL") {
-                    matches = matches && post.category.equals(category, ignoreCase = true)
-                }
-                
-                if (query.isNotEmpty()) {
-                    val q = query.lowercase()
-                    matches = matches && (
-                        post.title.lowercase().contains(q) ||
-                        post.content.lowercase().contains(q) ||
-                        post.tags.lowercase().contains(q)
-                    )
-                }
-                matches
             }
         }
     }
+
+    private data class FilterParams(
+        val type: String,
+        val category: String,
+        val query: String,
+        val followedOnlyFlag: Boolean,
+        val followsList: List<String>
+    )
 
     fun execute(
         selectedType: Flow<String>,
