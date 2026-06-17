@@ -127,18 +127,6 @@ fun MainScreen(viewModel: PostViewModel) {
             .navigationBarsPadding()
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Title Area
-            AppHeader(
-                onSearchChanged = { viewModel.setSearchQuery(it) },
-                searchQuery = searchQuery,
-                activeSort = selectedSort,
-                onSortToggled = {
-                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
-                    viewModel.setSortOrder(nextSort)
-                },
-                onMapToggled = { showIntelligenceMap = true }
-            )
-
             // Dynamic Tab Views
             androidx.compose.animation.AnimatedContent(
                 targetState = activeNavTab,
@@ -147,96 +135,120 @@ fun MainScreen(viewModel: PostViewModel) {
             ) { tab ->
                 when (tab) {
                     0 -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            // FEED VIEW LAYOUT
-                            // Toggles & Filter row
-                            FeedTogglesAndCategories(
-                                selectedType = selectedType,
-                                onTypeSelected = { viewModel.setFilterType(it) },
-                                selectedCategory = selectedCategory,
-                                onCategorySelected = { viewModel.setFilterCategory(it) }
-                            )
-
-                            // Following Only Filter Toggle Row
-                            val followedOnlyFlag by viewModel.followedOnly.collectAsStateWithLifecycle()
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { viewModel.setFollowedOnly(!followedOnlyFlag) }
-                                    .padding(horizontal = 16.dp, vertical = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = Icons.Default.Favorite,
-                                        contentDescription = null,
-                                        tint = if (followedOnlyFlag) NeoCyan else SoftText,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "Filter feed by Followed Thinkers Only",
-                                        color = if (followedOnlyFlag) Color.White else SoftText,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                        // FEED VIEW LAYOUT
+                        val followedOnlyFlag by viewModel.followedOnly.collectAsStateWithLifecycle()
+                        
+                        PullToRefreshBox(
+                            isRefreshing = isRefreshing || pagedPosts.loadState.refresh is LoadState.Loading,
+                            onRefresh = { 
+                                viewModel.refreshFeed()
+                                pagedPosts.refresh()
+                            },
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            if (pagedPosts.loadState.refresh is LoadState.Error) {
+                                Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        AppHeader(
+                                            onSearchChanged = { viewModel.setSearchQuery(it) },
+                                            searchQuery = searchQuery,
+                                            activeSort = selectedSort,
+                                            onSortToggled = {
+                                                val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                                viewModel.setSortOrder(nextSort)
+                                            },
+                                            onMapToggled = { showIntelligenceMap = true }
+                                        )
+                                        Text("Error loading data", color = Color.White)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Button(onClick = { pagedPosts.retry() }) {
+                                            Text("Retry")
+                                        }
+                                    }
                                 }
-                                Switch(
-                                    checked = followedOnlyFlag,
-                                    onCheckedChange = { viewModel.setFollowedOnly(it) },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = NeoCyan,
-                                        checkedTrackColor = NeoCyan.copy(alpha = 0.3f),
-                                        uncheckedThumbColor = CosmicGray,
-                                        uncheckedTrackColor = CosmicInput
-                                    ),
-                                    modifier = Modifier.testTag("following_only_switch")
-                                )
-                            }
-
-                            // Post feed list
-                            PullToRefreshBox(
-                                isRefreshing = isRefreshing || pagedPosts.loadState.refresh is LoadState.Loading,
-                                onRefresh = { 
-                                    viewModel.refreshFeed()
-                                    pagedPosts.refresh()
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .weight(1f)
-                            ) {
-                                if (pagedPosts.loadState.refresh is LoadState.Error) {
-                                    Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()), contentAlignment = Alignment.Center) {
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Text("Error loading data", color = Color.White)
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            Button(onClick = { pagedPosts.retry() }) {
-                                                Text("Retry")
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(bottom = 16.dp)
+                                ) {
+                                    item {
+                                        Column {
+                                            AppHeader(
+                                                onSearchChanged = { viewModel.setSearchQuery(it) },
+                                                searchQuery = searchQuery,
+                                                activeSort = selectedSort,
+                                                onSortToggled = {
+                                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                                    viewModel.setSortOrder(nextSort)
+                                                },
+                                                onMapToggled = { showIntelligenceMap = true }
+                                            )
+                                            FeedTogglesAndCategories(
+                                                selectedType = selectedType,
+                                                onTypeSelected = { viewModel.setFilterType(it) },
+                                                selectedCategory = selectedCategory,
+                                                onCategorySelected = { viewModel.setFilterCategory(it) }
+                                            )
+                                            
+                                            // Following Only Filter Toggle Row
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable { viewModel.setFollowedOnly(!followedOnlyFlag) }
+                                                    .padding(horizontal = 16.dp, vertical = 6.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Favorite,
+                                                        contentDescription = null,
+                                                        tint = if (followedOnlyFlag) NeoCyan else SoftText,
+                                                        modifier = Modifier.size(14.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text(
+                                                        text = "Filter feed by Followed Thinkers Only",
+                                                        color = if (followedOnlyFlag) Color.White else SoftText,
+                                                        fontSize = 11.sp,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                }
+                                                Switch(
+                                                    checked = followedOnlyFlag,
+                                                    onCheckedChange = { viewModel.setFollowedOnly(it) },
+                                                    colors = SwitchDefaults.colors(
+                                                        checkedThumbColor = NeoCyan,
+                                                        checkedTrackColor = NeoCyan.copy(alpha = 0.3f),
+                                                        uncheckedThumbColor = CosmicGray,
+                                                        uncheckedTrackColor = CosmicInput
+                                                    ),
+                                                    modifier = Modifier.testTag("following_only_switch")
+                                                )
                                             }
                                         }
                                     }
-                                } else if (pagedPosts.itemCount == 0 && pagedPosts.loadState.refresh is LoadState.NotLoading) {
-                                    Box(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-                                        EmptyStateView(searchQuery, selectedCategory, selectedType)
-                                    }
-                                } else {
-                                    LazyColumn(
-                                        modifier = Modifier.fillMaxSize(),
-                                        contentPadding = PaddingValues(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
+                                    
+                                    if (pagedPosts.itemCount == 0 && pagedPosts.loadState.refresh is LoadState.NotLoading) {
                                         item {
-                                            TrendSummaryHeader(posts, selectedType)
+                                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+                                                EmptyStateView(searchQuery, selectedCategory, selectedType)
+                                            }
                                         }
-    
+                                    } else {
+                                        item {
+                                            Box(modifier = Modifier.padding(16.dp)) {
+                                                TrendSummaryHeader(posts, selectedType)
+                                            }
+                                        }
+
                                         items(
                                             count = pagedPosts.itemCount,
                                             key = { index -> pagedPosts[index]?.id ?: "placeholder_$index" }
                                         ) { index ->
                                             val post = pagedPosts[index]
                                             if (post != null) {
-                                                Box(modifier = Modifier.padding(bottom = 8.dp)) {
+                                                Box(modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
                                                     PostCard(
                                                         post = post,
                                                         followedAuthors = allFollows,
@@ -276,30 +288,65 @@ fun MainScreen(viewModel: PostViewModel) {
                         }
                     }
                     1 -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            CommunityTabContent(
-                                viewModel = viewModel,
-                                posts = posts,
-                                reputations = authorReputations,
-                                advancedReputations = advancedReputations
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            AppHeader(
+                                onSearchChanged = { viewModel.setSearchQuery(it) },
+                                searchQuery = searchQuery,
+                                activeSort = selectedSort,
+                                onSortToggled = {
+                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                    viewModel.setSortOrder(nextSort)
+                                },
+                                onMapToggled = { showIntelligenceMap = true }
                             )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                CommunityTabContent(
+                                    viewModel = viewModel,
+                                    posts = posts,
+                                    reputations = authorReputations,
+                                    advancedReputations = advancedReputations
+                                )
+                            }
                         }
                     }
                     2 -> {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            CategoriesTabContent(
-                                viewModel = viewModel,
-                                onCategorySelected = {
-                                    viewModel.setFilterCategory(it)
-                                    activeNavTab = 0
-                                }
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            AppHeader(
+                                onSearchChanged = { viewModel.setSearchQuery(it) },
+                                searchQuery = searchQuery,
+                                activeSort = selectedSort,
+                                onSortToggled = {
+                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                    viewModel.setSortOrder(nextSort)
+                                },
+                                onMapToggled = { showIntelligenceMap = true }
                             )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                CategoriesTabContent(
+                                    viewModel = viewModel,
+                                    onCategorySelected = {
+                                        viewModel.setFilterCategory(it)
+                                        activeNavTab = 0
+                                    }
+                                )
+                            }
                         }
                     }
                     3 -> {
                         // PROFILE TAB LAYOUT
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            ProfileTabContent(
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            AppHeader(
+                                onSearchChanged = { viewModel.setSearchQuery(it) },
+                                searchQuery = searchQuery,
+                                activeSort = selectedSort,
+                                onSortToggled = {
+                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                    viewModel.setSortOrder(nextSort)
+                                },
+                                onMapToggled = { showIntelligenceMap = true }
+                            )
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                ProfileTabContent(
                                 viewModel = viewModel,
                                 myProfile = myProfile,
                                 allFollows = allFollows,
@@ -308,9 +355,10 @@ fun MainScreen(viewModel: PostViewModel) {
                                 posts = posts
                             )
                         }
-                    }
-                }
-            }
+                    } // closes Column
+                    } // closes 3 -> block
+                } // closes when
+            } // closes AnimatedContent
 
             // Bottom Navigation tabs bar
             NavigationBar(
