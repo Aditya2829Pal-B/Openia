@@ -5,7 +5,7 @@ import com.example.data.model.*
 import kotlinx.coroutines.flow.Flow
 
 @Dao
-interface PostDao {
+interface DiscussionsDao {
     @Query("SELECT * FROM posts ORDER BY timestamp DESC")
     fun getAllPostsFlow(): Flow<List<PostEntity>>
 

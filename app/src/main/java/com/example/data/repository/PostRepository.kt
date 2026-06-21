@@ -3,7 +3,7 @@ package com.example.data.repository
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
-import com.example.data.local.PostDao
+import com.example.data.local.DiscussionsDao
 import com.example.data.model.CommentEntity
 import com.example.data.model.PostEntity
 import com.example.data.model.UserReactionEntity
@@ -19,7 +19,7 @@ import com.example.data.realtime.PendingOperationDao
 import org.json.JSONObject
 
 class PostRepository(
-    private val postDao: PostDao,
+    private val postDao: DiscussionsDao,
     private val pendingOperationDao: PendingOperationDao
 ) {
 

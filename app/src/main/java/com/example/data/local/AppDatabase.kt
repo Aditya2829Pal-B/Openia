@@ -32,7 +32,7 @@ import com.example.data.realtime.PendingOperationDao
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-    abstract fun postDao(): PostDao
+    abstract fun discussionsDao(): DiscussionsDao
     abstract fun pendingOperationDao(): PendingOperationDao
 
     companion object {

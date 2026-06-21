@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
     enableEdgeToEdge()
 
     val database = AppDatabase.getDatabase(applicationContext)
-    val dao = database.postDao()
+    val dao = database.discussionsDao()
     val pendingOperationDao = database.pendingOperationDao()
     val repository = PostRepository(dao, pendingOperationDao)
 
