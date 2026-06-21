@@ -25,14 +25,14 @@ class PostRepository(
 
     val allPosts: Flow<List<PostEntity>> = postDao.getAllPostsFlow()
     
-    fun getPagedPosts(): Flow<PagingData<PostEntity>> {
-        return Pager(
-            config = PagingConfig(
-                pageSize = 20,
-                enablePlaceholders = false
-            ),
-            pagingSourceFactory = { postDao.getPagingSource() }
-        ).flow
+    fun getDynamicPagingSource(
+        type: String,
+        category: String,
+        query: String,
+        followedOnly: Boolean,
+        follows: List<String>
+    ): androidx.paging.PagingSource<Int, PostEntity> {
+        return postDao.getDynamicPagingSource(type, category, query, followedOnly, follows)
     }
 
     val myProfile: Flow<UserProfileEntity?> = postDao.getUserProfileFlow("You")

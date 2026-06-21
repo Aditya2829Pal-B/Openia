@@ -12,6 +12,22 @@ interface PostDao {
     @Query("SELECT * FROM posts ORDER BY timestamp DESC")
     fun getPagingSource(): androidx.paging.PagingSource<Int, PostEntity>
 
+    @Query("""
+        SELECT * FROM posts 
+        WHERE (:type = 'ALL' OR postType = :type)
+        AND (:category = 'ALL' OR category = :category)
+        AND (:query = '' OR title LIKE '%' || :query || '%' OR content LIKE '%' || :query || '%' OR tags LIKE '%' || :query || '%')
+        AND (:followedOnly = 0 OR author IN (:follows) OR (author = 'dummy_no_follows_so_fail' AND 1=0))
+        ORDER BY timestamp DESC
+    """)
+    fun getDynamicPagingSource(
+        type: String, 
+        category: String, 
+        query: String, 
+        followedOnly: Boolean, 
+        follows: List<String>
+    ): androidx.paging.PagingSource<Int, PostEntity>
+
     @Query("SELECT * FROM posts WHERE id = :id")
     fun getPostByIdFlow(id: Int): Flow<PostEntity?>
 

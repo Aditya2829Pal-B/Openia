@@ -78,14 +78,37 @@ class PostViewModel(
             initialValue = emptyList()
         )
 
-    // Combined filtered posts flow - delegating directly to UseCase!
-    val pagedPosts: kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<PostEntity>> = getFeedPostsUseCase.executePaged(
-        selectedType = _selectedType,
-        selectedCategory = _selectedCategory,
-        searchQuery = _searchQuery,
-        followedOnly = _followedOnly,
-        allFollows = allFollows
-    ).cachedIn(viewModelScope)
+    // Combined filtered posts flow natively with InvalidatingPagingSourceFactory
+    private val pagingSourceFactory = androidx.paging.InvalidatingPagingSourceFactory {
+        repository.getDynamicPagingSource(
+            _selectedType.value,
+            _selectedCategory.value,
+            _searchQuery.value,
+            _followedOnly.value,
+            allFollows.value
+        )
+    }
+
+    val pagedPosts: kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<PostEntity>> = androidx.paging.Pager(
+        config = androidx.paging.PagingConfig(pageSize = 20, enablePlaceholders = false),
+        pagingSourceFactory = pagingSourceFactory
+    ).flow.cachedIn(viewModelScope)
+
+    init {
+        // Invalidate Pager when filters change
+        viewModelScope.launch {
+            combine(
+                _selectedType,
+                _selectedCategory,
+                _searchQuery,
+                _followedOnly,
+                allFollows
+            ) { _, _, _, _, _ -> 1 }
+                .collect {
+                    pagingSourceFactory.invalidate()
+                }
+        }
+    }
 
     val posts: StateFlow<List<PostEntity>> = getFeedPostsUseCase.execute(
         selectedType = _selectedType,

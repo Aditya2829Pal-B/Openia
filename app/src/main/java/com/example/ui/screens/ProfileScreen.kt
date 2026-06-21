@@ -33,6 +33,7 @@ import com.example.ui.viewmodel.PostViewModel
 @Composable
 fun ProfileTabContent(
     viewModel: PostViewModel,
+    headerContent: @Composable () -> Unit,
     myProfile: UserProfileEntity?,
     allFollows: List<String>,
     reputations: Map<String, Int>,
@@ -57,6 +58,10 @@ fun ProfileTabContent(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 80.dp)
     ) {
+        item {
+            headerContent()
+        }
+
         // --- 1. PROFILE HEADER ---
         item {
             Card(

@@ -278,74 +278,68 @@ fun MainScreen(viewModel: PostViewModel) {
                         }
                     }
                     1 -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            AppHeader(
-                                onSearchChanged = { viewModel.setSearchQuery(it) },
-                                searchQuery = searchQuery,
-                                activeSort = selectedSort,
-                                onSortToggled = {
-                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
-                                    viewModel.setSortOrder(nextSort)
-                                },
-                                onMapToggled = { showIntelligenceMap = true }
-                            )
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                CommunityTabContent(
-                                    viewModel = viewModel,
-                                    posts = posts,
-                                    reputations = authorReputations,
-                                    advancedReputations = advancedReputations
+                        CommunityTabContent(
+                            viewModel = viewModel,
+                            headerContent = {
+                                AppHeader(
+                                    onSearchChanged = { viewModel.setSearchQuery(it) },
+                                    searchQuery = searchQuery,
+                                    activeSort = selectedSort,
+                                    onSortToggled = {
+                                        val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                        viewModel.setSortOrder(nextSort)
+                                    },
+                                    onMapToggled = { showIntelligenceMap = true }
                                 )
-                            }
-                        }
+                            },
+                            posts = posts,
+                            reputations = authorReputations,
+                            advancedReputations = advancedReputations
+                        )
                     }
                     2 -> {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            AppHeader(
-                                onSearchChanged = { viewModel.setSearchQuery(it) },
-                                searchQuery = searchQuery,
-                                activeSort = selectedSort,
-                                onSortToggled = {
-                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
-                                    viewModel.setSortOrder(nextSort)
-                                },
-                                onMapToggled = { showIntelligenceMap = true }
-                            )
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                CategoriesTabContent(
-                                    viewModel = viewModel,
-                                    onCategorySelected = {
-                                        viewModel.setFilterCategory(it)
-                                        activeNavTab = 0
-                                    }
+                        CategoriesTabContent(
+                            viewModel = viewModel,
+                            headerContent = {
+                                AppHeader(
+                                    onSearchChanged = { viewModel.setSearchQuery(it) },
+                                    searchQuery = searchQuery,
+                                    activeSort = selectedSort,
+                                    onSortToggled = {
+                                        val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                        viewModel.setSortOrder(nextSort)
+                                    },
+                                    onMapToggled = { showIntelligenceMap = true }
                                 )
+                            },
+                            onCategorySelected = {
+                                viewModel.setFilterCategory(it)
+                                activeNavTab = 0
                             }
-                        }
+                        )
                     }
                     3 -> {
                         // PROFILE TAB LAYOUT
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            AppHeader(
-                                onSearchChanged = { viewModel.setSearchQuery(it) },
-                                searchQuery = searchQuery,
-                                activeSort = selectedSort,
-                                onSortToggled = {
-                                    val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
-                                    viewModel.setSortOrder(nextSort)
-                                },
-                                onMapToggled = { showIntelligenceMap = true }
-                            )
-                            Box(modifier = Modifier.fillMaxSize()) {
-                                ProfileTabContent(
-                                viewModel = viewModel,
-                                myProfile = myProfile,
-                                allFollows = allFollows,
-                                reputations = authorReputations,
-                                advancedReputations = advancedReputations,
-                                posts = posts
-                            )
-                        }
-                    } // closes Column
+                        ProfileTabContent(
+                            viewModel = viewModel,
+                            headerContent = {
+                                AppHeader(
+                                    onSearchChanged = { viewModel.setSearchQuery(it) },
+                                    searchQuery = searchQuery,
+                                    activeSort = selectedSort,
+                                    onSortToggled = {
+                                        val nextSort = if (selectedSort == "TRENDING") "LATEST" else "TRENDING"
+                                        viewModel.setSortOrder(nextSort)
+                                    },
+                                    onMapToggled = { showIntelligenceMap = true }
+                                )
+                            },
+                            myProfile = myProfile,
+                            allFollows = allFollows,
+                            reputations = authorReputations,
+                            advancedReputations = advancedReputations,
+                            posts = posts
+                        )
                     } // closes 3 -> block
                 } // closes when
             } // closes AnimatedContent

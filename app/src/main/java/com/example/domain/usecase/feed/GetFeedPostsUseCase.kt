@@ -12,51 +12,7 @@ import kotlinx.coroutines.flow.map
 @kotlin.OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class GetFeedPostsUseCase(private val repository: PostRepository) {
 
-    fun executePaged(
-        selectedType: Flow<String>,
-        selectedCategory: Flow<String>,
-        searchQuery: Flow<String>,
-        followedOnly: Flow<Boolean>,
-        allFollows: Flow<List<String>>
-    ): Flow<PagingData<PostEntity>> {
-        return combine(
-            selectedType,
-            selectedCategory,
-            searchQuery,
-            followedOnly,
-            allFollows
-        ) { type, category, query, followedOnlyFlag, followsList ->
-            FilterParams(type, category, query, followedOnlyFlag, followsList)
-        }.flatMapLatest { params ->
-            repository.getPagedPosts().map { pagedData ->
-                pagedData.filter { post ->
-                    var matches = true
-                    
-                    if (params.followedOnlyFlag) {
-                        matches = matches && params.followsList.contains(post.author)
-                    }
 
-                    if (params.type != "ALL") {
-                        matches = matches && post.postType == params.type
-                    }
-                    
-                    if (params.category != "ALL") {
-                        matches = matches && post.category.equals(params.category, ignoreCase = true)
-                    }
-                    
-                    if (params.query.isNotEmpty()) {
-                        val q = params.query.lowercase()
-                        matches = matches && (
-                            post.title.lowercase().contains(q) ||
-                            post.content.lowercase().contains(q) ||
-                            post.tags.lowercase().contains(q)
-                        )
-                    }
-                    matches
-                }
-            }
-        }
-    }
 
     private data class FilterParams(
         val type: String,

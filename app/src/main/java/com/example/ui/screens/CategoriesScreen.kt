@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -44,51 +45,53 @@ val ALL_CATEGORIES = listOf(
 @Composable
 fun CategoriesTabContent(
     viewModel: PostViewModel,
+    headerContent: @Composable () -> Unit,
     onCategorySelected: (String) -> Unit
 ) {
-    Column(
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 120.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp, top = 0.dp),
         modifier = Modifier
             .fillMaxSize()
             .background(CosmicBlack)
-            .padding(16.dp)
     ) {
-        Text(
-            text = "Categories",
-            color = Color.White,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.ExtraBold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        Text(
-            text = "Explore topics that matter to you",
-            color = SoftText,
-            fontSize = 14.sp,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            Column {
+                headerContent()
+                
+                Text(
+                    text = "Categories",
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Text(
+                    text = "Explore topics that matter to you",
+                    color = SoftText,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+        }
 
-        LazyVerticalGrid(
-            columns = GridCells.Adaptive(minSize = 120.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = 88.dp, top = 8.dp),
-            modifier = Modifier.weight(1f).fillMaxWidth()
-        ) {
-            items(ALL_CATEGORIES) { category ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(CosmicDark)
-                        .clickable { onCategorySelected(category) }
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = category,
-                        color = NeoCyan,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
+        items(ALL_CATEGORIES) { category ->
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(CosmicDark)
+                    .clickable { onCategorySelected(category) }
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = category,
+                    color = NeoCyan,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
