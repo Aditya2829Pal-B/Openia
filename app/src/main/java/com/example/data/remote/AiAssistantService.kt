@@ -1,4 +1,4 @@
-package com.example.data.repository
+package com.example.data.remote
 
 import android.util.Log
 import com.example.BuildConfig
@@ -15,12 +15,12 @@ import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 data class ThreadAnalysisResult(
-    val trendAnalysis: String,
-    val sentimentSynthesis: String
+    val consensusSynthesis: String,
+    val sentimentAnalysis: String
 )
 
-class GeminiRepository {
-    private val TAG = "GeminiRepository"
+class AiAssistantService {
+    private val TAG = "AiAssistantService"
     private val MODEL_NAME = "gemini-3.5-flash"
     private val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent"
 
@@ -56,10 +56,10 @@ class GeminiRepository {
             
             $threadContext
             
-            Perform trend analysis and sentiment synthesis on this thread.
+            Perform consensus synthesis and sentiment analysis on this thread.
             Provide your response in exactly two sections separated by '|||':
-            Section 1: Trend Analysis (Identify the overall trend, common themes, and key takeaways from the discussion)
-            Section 2: Sentiment Synthesis (Summarize the general sentiment, varying perspectives, and emotional tone of the participants)
+            Section 1: Consensus Synthesis (Identify the overall consensus, common themes, and key takeaways from the discussion)
+            Section 2: Sentiment Analysis (Summarize the general sentiment, varying perspectives, and emotional tone of the participants)
         """.trimIndent()
 
         try {
@@ -111,19 +111,19 @@ class GeminiRepository {
 
     private fun parseAnalysisResult(text: String): ThreadAnalysisResult {
         val split = text.split("|||")
-        val trendAnalysis = split.getOrNull(0)?.trim() ?: "Trend Analysis unavailable."
-        val sentimentSynthesis = split.getOrNull(1)?.trim() ?: "Sentiment Synthesis unavailable."
+        val consensusSynthesis = split.getOrNull(0)?.trim() ?: "Consensus Synthesis unavailable."
+        val sentimentAnalysis = split.getOrNull(1)?.trim() ?: "Sentiment Analysis unavailable."
         
         return ThreadAnalysisResult(
-            trendAnalysis = trendAnalysis.replace(Regex("^Section 1:?\\s*", RegexOption.IGNORE_CASE), "").trim(),
-            sentimentSynthesis = sentimentSynthesis.replace(Regex("^Section 2:?\\s*", RegexOption.IGNORE_CASE), "").trim()
+            consensusSynthesis = consensusSynthesis.replace(Regex("^Section 1:?\\s*", RegexOption.IGNORE_CASE), "").trim(),
+            sentimentAnalysis = sentimentAnalysis.replace(Regex("^Section 2:?\\s*", RegexOption.IGNORE_CASE), "").trim()
         )
     }
 
     private fun getMockAnalysis(): ThreadAnalysisResult {
         return ThreadAnalysisResult(
-            trendAnalysis = "The overall trend leans towards constructive debate, with dominant themes exploring alternative solutions and challenging the traditional narrative.",
-            sentimentSynthesis = "The prevailing sentiment is cautious optimism mixed with skepticism. Various perspectives clash respectfully, reflecting a highly engaged and emotionally invested community."
+            consensusSynthesis = "The overall consensus leans towards constructive debate, with dominant themes exploring alternative solutions and challenging the traditional narrative.",
+            sentimentAnalysis = "The prevailing sentiment is cautious optimism mixed with skepticism. Various perspectives clash respectfully, reflecting a highly engaged and emotionally invested community."
         )
     }
 }
