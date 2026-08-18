@@ -88,11 +88,20 @@ interface DiscussionsDao {
     @Query("SELECT * FROM user_profile WHERE username = :username")
     fun getUserProfileFlow(username: String): Flow<UserProfileEntity?>
 
+    @Query("SELECT * FROM user_profile LIMIT 1")
+    fun getLocalUserProfileFlow(): Flow<UserProfileEntity?>
+
     @Query("SELECT * FROM user_profile WHERE username = :username")
     suspend fun getUserProfile(username: String): UserProfileEntity?
 
+    @Query("SELECT * FROM user_profile LIMIT 1")
+    suspend fun getLocalUserProfile(): UserProfileEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUserProfile(profile: UserProfileEntity)
+    
+    @Query("DELETE FROM user_profile WHERE username = :username")
+    suspend fun deleteUserProfile(username: String)
 
     @Query("SELECT * FROM follows")
     fun getFollowsFlow(): Flow<List<FollowEntity>>

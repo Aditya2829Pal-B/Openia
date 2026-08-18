@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import com.example.data.model.PostEntity
 import com.example.data.model.UserProfileEntity
 import com.example.domain.model.AdvancedReputation
@@ -44,15 +46,25 @@ fun ProfileTabContent(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var isEditing by remember(myProfile) { mutableStateOf(false) }
+    var editUsername by remember(myProfile) { mutableStateOf(myProfile?.username ?: "You") }
     var editDisplayName by remember(myProfile) { mutableStateOf(myProfile?.displayName ?: "") }
     var editBio by remember(myProfile) { mutableStateOf(myProfile?.bio ?: "") }
     var editAvatarSeed by remember(myProfile) { mutableStateOf(myProfile?.avatarSeed ?: "Y") }
+    var editProfilePictureUri by remember(myProfile) { mutableStateOf<android.net.Uri?>(myProfile?.profilePictureUri?.let { android.net.Uri.parse(it) }) }
     var activeDashboard by remember { mutableStateOf("Recent Posts") }
 
-    val myPosts = remember(posts) { posts.filter { it.author == "You" }.sortedByDescending { it.timestamp } }
+    val imagePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        if (uri != null) {
+            editProfilePictureUri = uri
+        }
+    }
+
+    val myPosts = remember(posts, myProfile) { posts.filter { it.author == (myProfile?.username ?: "You") }.sortedByDescending { it.timestamp } }
     val savedPosts = remember(posts) { posts.filter { it.upvotesCount > 5 }.take(3) }
-    val myReputation = advancedReputations["You"]
-    val simpleRep = reputations["You"] ?: 0
+    val myReputation = advancedReputations[myProfile?.username ?: "You"]
+    val simpleRep = reputations[myProfile?.username ?: "You"] ?: 0
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -145,15 +157,30 @@ fun ProfileTabContent(
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(generateAvatarBrush(editAvatarSeed), CircleShape),
+                                    .background(generateAvatarBrush(editAvatarSeed), CircleShape)
+                                    .clickable { if (isEditing) imagePickerLauncher.launch("image/*") },
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = editAvatarSeed,
-                                    color = Color.White,
-                                    fontSize = 36.sp,
-                                    fontWeight = FontWeight.Black
-                                )
+                                if (editProfilePictureUri != null) {
+                                    AsyncImage(
+                                        model = editProfilePictureUri,
+                                        contentDescription = "Profile Picture",
+                                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    Text(
+                                        text = editAvatarSeed,
+                                        color = Color.White,
+                                        fontSize = 36.sp,
+                                        fontWeight = FontWeight.Black
+                                    )
+                                }
+                                if (isEditing) {
+                                    Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.4f), CircleShape), contentAlignment = Alignment.Center) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit Profile Picture", tint = Color.White)
+                                    }
+                                }
                             }
                         }
                     }
@@ -167,9 +194,23 @@ fun ProfileTabContent(
                     ) {
                         if (isEditing) {
                             OutlinedTextField(
+                                value = editUsername,
+                                onValueChange = { editUsername = it },
+                                label = { Text("Username", color = SoftText) },
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeoCyan, unfocusedBorderColor = CosmicDark, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                            )
+                            OutlinedTextField(
                                 value = editDisplayName,
                                 onValueChange = { editDisplayName = it },
                                 label = { Text("Display Name", color = SoftText) },
+                                colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeoCyan, unfocusedBorderColor = CosmicDark, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                            )
+                            OutlinedTextField(
+                                value = editBio,
+                                onValueChange = { editBio = it },
+                                label = { Text("Bio", color = SoftText) },
                                 colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = NeoCyan, unfocusedBorderColor = CosmicDark, focusedTextColor = Color.White, unfocusedTextColor = Color.White),
                                 modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
                             )
@@ -182,7 +223,7 @@ fun ProfileTabContent(
                             )
                             Button(
                                 onClick = {
-                                    viewModel.updateMyProfile(editDisplayName, editBio, editAvatarSeed)
+                                    viewModel.updateMyProfile(myProfile?.username ?: "You", editUsername, editDisplayName, editBio, editAvatarSeed, editProfilePictureUri?.toString())
                                     isEditing = false
                                 },
                                 modifier = Modifier.fillMaxWidth().height(44.dp),
@@ -193,7 +234,7 @@ fun ProfileTabContent(
                         } else {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = editDisplayName.ifEmpty { "Openian Citizen" },
+                                    text = myProfile?.displayName?.ifEmpty { "Openian Citizen" } ?: "Openian Citizen",
                                     color = Color.White,
                                     fontSize = 24.sp,
                                     fontWeight = FontWeight.ExtraBold,
@@ -202,9 +243,15 @@ fun ProfileTabContent(
                                 Icon(Icons.Default.CheckCircle, contentDescription = "Verified", tint = NeoCyan, modifier = Modifier.size(18.dp))
                             }
                             Text(
-                                text = "@You",
+                                text = "@${myProfile?.username ?: "You"}",
                                 color = SoftText,
                                 fontSize = 14.sp,
+                                modifier = Modifier.padding(bottom = 4.dp)
+                            )
+                            Text(
+                                text = myProfile?.bio ?: "Sharing alternative insights and solutions on Openia.",
+                                color = Color.White,
+                                fontSize = 13.sp,
                                 modifier = Modifier.padding(bottom = 12.dp)
                             )
 

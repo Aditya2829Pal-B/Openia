@@ -28,7 +28,7 @@ import com.example.data.realtime.PendingOperationDao
         BookmarkEntity::class,
         DraftEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -62,7 +62,8 @@ data class UserProfileEntity(
     val displayName: String = "Openian Citizen",
     val bio: String = "Sharing alternative insights and solutions on Openia.",
     val avatarSeed: String = "Y",
-    val baseFollowers: Int = 12
+    val baseFollowers: Int = 12,
+    val profilePictureUri: String? = null
 )
 
 @Entity(tableName = "follows")

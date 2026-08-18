@@ -211,7 +211,7 @@ class PostViewModel(
             // Ensure default profile exists
             val existingProfile = getUserProfileUseCase.executeDirect("You")
             if (existingProfile == null) {
-                updateUserProfileUseCase.execute("Openian Citizen", "Sharing alternative insights and solutions on Openia.", "Y")
+                updateUserProfileUseCase.execute("You", "You", "Openian Citizen", "Sharing alternative insights and solutions on Openia.", "Y", null)
             }
         }
     }
@@ -226,9 +226,9 @@ class PostViewModel(
         }
     }
 
-    fun updateMyProfile(displayName: String, bio: String, avatarSeed: String) {
+    fun updateMyProfile(oldUsername: String, newUsername: String, displayName: String, bio: String, avatarSeed: String, profilePictureUri: String?) {
         viewModelScope.launch {
-            updateUserProfileUseCase.execute(displayName, bio, avatarSeed)
+            updateUserProfileUseCase.execute(oldUsername, newUsername, displayName, bio, avatarSeed, profilePictureUri)
         }
     }
 
@@ -281,28 +281,32 @@ class PostViewModel(
         category: String,
         tags: String,
         imageUri: String? = null,
-        author: String = "You"
+        author: String? = null
     ) {
         if (!moderateContentUseCase.isContentSafe(title, content)) {
             // Under enterprise bounds, we abort creating toxic posts
             return
         }
         safeScope.launch {
-            createPostUseCase.execute(title, content, type, category, tags, imageUri, author)
+            val currentUsername = myProfile.value?.username ?: "You"
+            val finalAuthor = author ?: currentUsername
+            createPostUseCase.execute(title, content, type, category, tags, imageUri, finalAuthor)
         }
     }
 
     // Comment submission delegating to UseCase
-    fun submitComment(postId: Int, content: String, author: String = "You", isSolution: Boolean = false, parentCommentId: Int? = null) {
+    fun submitComment(postId: Int, content: String, author: String? = null, isSolution: Boolean = false, parentCommentId: Int? = null) {
         if (!moderateContentUseCase.isContentSafe("", content)) {
             return
         }
         safeScope.launch {
+            val currentUsername = myProfile.value?.username ?: "You"
+            val finalAuthor = author ?: currentUsername
             // we will bypass use case for parentCommentId because it's simpler
             val comment = CommentEntity(
                 postId = postId,
-                author = author,
-                avatarSeed = if (author == "You") "Y" else author.first().toString().uppercase(),
+                author = finalAuthor,
+                avatarSeed = if (finalAuthor == "You") "Y" else finalAuthor.first().toString().uppercase(),
                 content = content,
                 isSolution = isSolution,
                 parentCommentId = parentCommentId

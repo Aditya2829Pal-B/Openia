@@ -35,7 +35,7 @@ class PostRepository(
         return postDao.getDynamicPagingSource(type, category, query, followedOnly, follows)
     }
 
-    val myProfile: Flow<UserProfileEntity?> = postDao.getUserProfileFlow("You")
+    val myProfile: Flow<UserProfileEntity?> = postDao.getLocalUserProfileFlow()
 
     val allFollows: Flow<List<FollowEntity>> = postDao.getFollowsFlow()
     
@@ -64,6 +64,10 @@ class PostRepository(
     }
 
     suspend fun getProfileDirect(username: String): UserProfileEntity? = postDao.getUserProfile(username)
+    
+    suspend fun getLocalProfileDirect(): UserProfileEntity? = postDao.getLocalUserProfile()
+    
+    suspend fun deleteProfile(username: String) = postDao.deleteUserProfile(username)
 
     private suspend fun enqueueOperation(type: String, payload: JSONObject) {
         pendingOperationDao.insertOperation(

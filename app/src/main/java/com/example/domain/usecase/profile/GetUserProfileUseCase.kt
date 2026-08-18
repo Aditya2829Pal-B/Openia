@@ -6,10 +6,13 @@ import kotlinx.coroutines.flow.Flow
 
 class GetUserProfileUseCase(private val repository: PostRepository) {
     fun execute(username: String): Flow<UserProfileEntity?> {
-        return repository.myProfile // Under existing DB structure, username is currently "You"
+        return repository.myProfile
     }
 
     suspend fun executeDirect(username: String): UserProfileEntity? {
+        if (username == "You") {
+            return repository.getLocalProfileDirect()
+        }
         return repository.getProfileDirect(username)
     }
 }
