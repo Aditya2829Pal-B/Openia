@@ -51,6 +51,10 @@ import java.util.*
 
 val NeoRed = Color(0xFFFF1744)
 
+enum class AppScreen {
+    FEED, COMMUNITY, CATEGORIES, PROFILE
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: PostViewModel) {
@@ -76,7 +80,7 @@ fun MainScreen(viewModel: PostViewModel) {
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var showIntelligenceMap by remember { mutableStateOf(false) }
-    var activeNavTab by remember { mutableStateOf(0) } // 0 = Feed, 1 = My Profile
+    var currentScreen by remember { mutableStateOf(AppScreen.FEED) }
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
@@ -119,12 +123,12 @@ fun MainScreen(viewModel: PostViewModel) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Dynamic Tab Views
             androidx.compose.animation.AnimatedContent(
-                targetState = activeNavTab,
+                targetState = currentScreen,
                 label = "Tab Transition",
                 modifier = Modifier.weight(1f)
             ) { tab ->
                 when (tab) {
-                    0 -> {
+                    AppScreen.FEED -> {
                         // FEED VIEW LAYOUT
                         val followedOnlyFlag by viewModel.followedOnly.collectAsStateWithLifecycle()
                         
@@ -277,7 +281,7 @@ fun MainScreen(viewModel: PostViewModel) {
                             }
                         }
                     }
-                    1 -> {
+                    AppScreen.COMMUNITY -> {
                         CommunityTabContent(
                             viewModel = viewModel,
                             headerContent = {
@@ -297,7 +301,7 @@ fun MainScreen(viewModel: PostViewModel) {
                             advancedReputations = advancedReputations
                         )
                     }
-                    2 -> {
+                    AppScreen.CATEGORIES -> {
                         CategoriesTabContent(
                             viewModel = viewModel,
                             headerContent = {
@@ -314,11 +318,11 @@ fun MainScreen(viewModel: PostViewModel) {
                             },
                             onCategorySelected = {
                                 viewModel.setFilterCategory(it)
-                                activeNavTab = 0
+                                currentScreen = AppScreen.FEED
                             }
                         )
                     }
-                    3 -> {
+                    AppScreen.PROFILE -> {
                         // PROFILE TAB LAYOUT
                         ProfileTabContent(
                             viewModel = viewModel,
@@ -350,19 +354,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 modifier = Modifier.height(72.dp)
             ) {
                 NavigationBarItem(
-                    selected = activeNavTab == 0,
-                    onClick = { activeNavTab = 0 },
+                    selected = currentScreen == AppScreen.FEED,
+                    onClick = { currentScreen = AppScreen.FEED },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Home,
                             contentDescription = "Feed Tab",
-                            tint = if (activeNavTab == 0) NeoCyan else SoftText
+                            tint = if (currentScreen == AppScreen.FEED) NeoCyan else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Feed",
-                            color = if (activeNavTab == 0) NeoCyan else SoftText,
+                            color = if (currentScreen == AppScreen.FEED) NeoCyan else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -374,19 +378,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = activeNavTab == 1,
-                    onClick = { activeNavTab = 1 },
+                    selected = currentScreen == AppScreen.COMMUNITY,
+                    onClick = { currentScreen = AppScreen.COMMUNITY },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Community Tab",
-                            tint = if (activeNavTab == 1) SolarCoral else SoftText
+                            tint = if (currentScreen == AppScreen.COMMUNITY) SolarCoral else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Community",
-                            color = if (activeNavTab == 1) SolarCoral else SoftText,
+                            color = if (currentScreen == AppScreen.COMMUNITY) SolarCoral else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -398,19 +402,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = activeNavTab == 2,
-                    onClick = { activeNavTab = 2 },
+                    selected = currentScreen == AppScreen.CATEGORIES,
+                    onClick = { currentScreen = AppScreen.CATEGORIES },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.List,
                             contentDescription = "Categories Tab",
-                            tint = if (activeNavTab == 2) Color(0xFF64B5F6) else SoftText
+                            tint = if (currentScreen == AppScreen.CATEGORIES) Color(0xFF64B5F6) else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Topics",
-                            color = if (activeNavTab == 2) Color(0xFF64B5F6) else SoftText,
+                            color = if (currentScreen == AppScreen.CATEGORIES) Color(0xFF64B5F6) else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -422,19 +426,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = activeNavTab == 3,
-                    onClick = { activeNavTab = 3 },
+                    selected = currentScreen == AppScreen.PROFILE,
+                    onClick = { currentScreen = AppScreen.PROFILE },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Profile Tab",
-                            tint = if (activeNavTab == 3) AccentPurple else SoftText
+                            tint = if (currentScreen == AppScreen.PROFILE) AccentPurple else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Profile",
-                            color = if (activeNavTab == 3) AccentPurple else SoftText,
+                            color = if (currentScreen == AppScreen.PROFILE) AccentPurple else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -448,7 +452,7 @@ fun MainScreen(viewModel: PostViewModel) {
         }
 
         // Floating Action Button for post creation (only active on Feed tab)
-        if (activeNavTab == 0) {
+        if (currentScreen == AppScreen.FEED) {
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
                 modifier = Modifier
