@@ -13,6 +13,10 @@ import com.example.data.model.FollowEntity
 import com.example.data.model.BookmarkEntity
 import com.example.data.model.DraftEntity
 
+import com.example.data.model.User
+import com.example.data.model.Discussion
+import com.example.data.model.ReputationPoint
+
 import com.example.data.realtime.PendingOperation
 import com.example.data.realtime.PendingOperationDao
 
@@ -26,9 +30,12 @@ import com.example.data.realtime.PendingOperationDao
         FollowEntity::class,
         PendingOperation::class,
         BookmarkEntity::class,
-        DraftEntity::class
+        DraftEntity::class,
+        User::class,
+        Discussion::class,
+        ReputationPoint::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
