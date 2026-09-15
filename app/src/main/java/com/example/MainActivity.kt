@@ -26,7 +26,8 @@ class MainActivity : ComponentActivity() {
     val database = AppDatabase.getDatabase(applicationContext)
     val dao = database.discussionsDao()
     val pendingOperationDao = database.pendingOperationDao()
-    val repository = PostRepository(dao, pendingOperationDao)
+    val discussionDao = database.discussionDao()
+    val repository = PostRepository(dao, pendingOperationDao, discussionDao)
 
     val sessionManager = SessionManager(applicationContext)
     val networkMonitor = NetworkMonitor(applicationContext)

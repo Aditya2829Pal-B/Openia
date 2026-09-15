@@ -55,6 +55,25 @@ enum class AppScreen {
     FEED, COMMUNITY, CATEGORIES, PROFILE
 }
 
+@Stable
+class MainNavigationState(
+    initialScreen: AppScreen = AppScreen.FEED
+) {
+    var currentScreen by mutableStateOf(initialScreen)
+        private set
+
+    fun navigateTo(screen: AppScreen) {
+        currentScreen = screen
+    }
+}
+
+@Composable
+fun rememberMainNavigationState(
+    initialScreen: AppScreen = AppScreen.FEED
+): MainNavigationState {
+    return remember { MainNavigationState(initialScreen) }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: PostViewModel) {
@@ -80,7 +99,7 @@ fun MainScreen(viewModel: PostViewModel) {
 
     var showCreateDialog by remember { mutableStateOf(false) }
     var showIntelligenceMap by remember { mutableStateOf(false) }
-    var currentScreen by remember { mutableStateOf(AppScreen.FEED) }
+    val navigationState = rememberMainNavigationState()
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
@@ -123,7 +142,7 @@ fun MainScreen(viewModel: PostViewModel) {
         Column(modifier = Modifier.fillMaxSize()) {
             // Dynamic Tab Views
             androidx.compose.animation.AnimatedContent(
-                targetState = currentScreen,
+                targetState = navigationState.currentScreen,
                 label = "Tab Transition",
                 modifier = Modifier.weight(1f)
             ) { tab ->
@@ -318,7 +337,7 @@ fun MainScreen(viewModel: PostViewModel) {
                             },
                             onCategorySelected = {
                                 viewModel.setFilterCategory(it)
-                                currentScreen = AppScreen.FEED
+                                navigationState.navigateTo(AppScreen.FEED)
                             }
                         )
                     }
@@ -354,19 +373,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 modifier = Modifier.height(72.dp)
             ) {
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.FEED,
-                    onClick = { currentScreen = AppScreen.FEED },
+                    selected = navigationState.currentScreen == AppScreen.FEED,
+                    onClick = { navigationState.navigateTo(AppScreen.FEED) },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Home,
                             contentDescription = "Feed Tab",
-                            tint = if (currentScreen == AppScreen.FEED) NeoCyan else SoftText
+                            tint = if (navigationState.currentScreen == AppScreen.FEED) NeoCyan else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Feed",
-                            color = if (currentScreen == AppScreen.FEED) NeoCyan else SoftText,
+                            color = if (navigationState.currentScreen == AppScreen.FEED) NeoCyan else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -378,19 +397,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.COMMUNITY,
-                    onClick = { currentScreen = AppScreen.COMMUNITY },
+                    selected = navigationState.currentScreen == AppScreen.COMMUNITY,
+                    onClick = { navigationState.navigateTo(AppScreen.COMMUNITY) },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Community Tab",
-                            tint = if (currentScreen == AppScreen.COMMUNITY) SolarCoral else SoftText
+                            tint = if (navigationState.currentScreen == AppScreen.COMMUNITY) SolarCoral else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Community",
-                            color = if (currentScreen == AppScreen.COMMUNITY) SolarCoral else SoftText,
+                            color = if (navigationState.currentScreen == AppScreen.COMMUNITY) SolarCoral else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -402,19 +421,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.CATEGORIES,
-                    onClick = { currentScreen = AppScreen.CATEGORIES },
+                    selected = navigationState.currentScreen == AppScreen.CATEGORIES,
+                    onClick = { navigationState.navigateTo(AppScreen.CATEGORIES) },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.List,
                             contentDescription = "Categories Tab",
-                            tint = if (currentScreen == AppScreen.CATEGORIES) Color(0xFF64B5F6) else SoftText
+                            tint = if (navigationState.currentScreen == AppScreen.CATEGORIES) Color(0xFF64B5F6) else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Topics",
-                            color = if (currentScreen == AppScreen.CATEGORIES) Color(0xFF64B5F6) else SoftText,
+                            color = if (navigationState.currentScreen == AppScreen.CATEGORIES) Color(0xFF64B5F6) else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -426,19 +445,19 @@ fun MainScreen(viewModel: PostViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.PROFILE,
-                    onClick = { currentScreen = AppScreen.PROFILE },
+                    selected = navigationState.currentScreen == AppScreen.PROFILE,
+                    onClick = { navigationState.navigateTo(AppScreen.PROFILE) },
                     icon = {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = "Profile Tab",
-                            tint = if (currentScreen == AppScreen.PROFILE) AccentPurple else SoftText
+                            tint = if (navigationState.currentScreen == AppScreen.PROFILE) AccentPurple else SoftText
                         )
                     },
                     label = {
                         Text(
                             text = "Profile",
-                            color = if (currentScreen == AppScreen.PROFILE) AccentPurple else SoftText,
+                            color = if (navigationState.currentScreen == AppScreen.PROFILE) AccentPurple else SoftText,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -452,7 +471,7 @@ fun MainScreen(viewModel: PostViewModel) {
         }
 
         // Floating Action Button for post creation (only active on Feed tab)
-        if (currentScreen == AppScreen.FEED) {
+        if (navigationState.currentScreen == AppScreen.FEED) {
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
                 modifier = Modifier

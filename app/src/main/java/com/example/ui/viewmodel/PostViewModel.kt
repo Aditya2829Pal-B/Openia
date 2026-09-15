@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.data.model.CommentEntity
+import com.example.data.model.Discussion
 import com.example.data.model.PostEntity
 import com.example.data.repository.PostRepository
 import com.example.domain.usecase.ai.AnalyzePostContentUseCase
@@ -88,6 +89,13 @@ class PostViewModel(
             allFollows.value
         )
     }
+
+    val allDiscussions: StateFlow<List<Discussion>> = repository.allDiscussions
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
     val pagedPosts: kotlinx.coroutines.flow.Flow<androidx.paging.PagingData<PostEntity>> = androidx.paging.Pager(
         config = androidx.paging.PagingConfig(pageSize = 20, enablePlaceholders = false),

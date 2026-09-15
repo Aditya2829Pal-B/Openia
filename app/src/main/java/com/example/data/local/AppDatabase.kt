@@ -41,6 +41,7 @@ import com.example.data.realtime.PendingOperationDao
 abstract class AppDatabase : RoomDatabase() {
     abstract fun discussionsDao(): DiscussionsDao
     abstract fun pendingOperationDao(): PendingOperationDao
+    abstract fun discussionDao(): DiscussionDao
 
     companion object {
         @Volatile

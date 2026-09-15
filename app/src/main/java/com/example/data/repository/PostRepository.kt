@@ -17,11 +17,20 @@ import com.example.data.model.DraftEntity
 import com.example.data.realtime.PendingOperation
 import com.example.data.realtime.PendingOperationDao
 import org.json.JSONObject
+import com.example.data.local.DiscussionDao
+import com.example.data.model.Discussion
 
 class PostRepository(
     private val postDao: DiscussionsDao,
-    private val pendingOperationDao: PendingOperationDao
+    private val pendingOperationDao: PendingOperationDao,
+    private val discussionDao: DiscussionDao
 ) {
+
+    val allDiscussions: Flow<List<Discussion>> = discussionDao.getAllDiscussions()
+
+    suspend fun insertDiscussion(discussion: Discussion) {
+        discussionDao.insertDiscussion(discussion)
+    }
 
     val allPosts: Flow<List<PostEntity>> = postDao.getAllPostsFlow()
     
