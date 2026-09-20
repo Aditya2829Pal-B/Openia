@@ -80,6 +80,7 @@ fun MainScreen(viewModel: PostViewModel) {
     val posts by viewModel.posts.collectAsStateWithLifecycle()
     val pagedPosts = viewModel.pagedPosts.collectAsLazyPagingItems()
     val currentPost by viewModel.currentPost.collectAsStateWithLifecycle()
+    val currentDiscussion by viewModel.currentDiscussion.collectAsStateWithLifecycle()
     val currentComments by viewModel.currentComments.collectAsStateWithLifecycle()
     val reactions by viewModel.currentReactions.collectAsStateWithLifecycle()
     val isAnalyzing by viewModel.isAnalyzing.collectAsStateWithLifecycle()
@@ -517,6 +518,18 @@ fun MainScreen(viewModel: PostViewModel) {
                 onEmpathyClick = { viewModel.empathyPost(post.id) },
                 onCommentUpvoteClick = { viewModel.upvoteComment(it) },
                 onCommentDownvoteClick = { viewModel.downvoteComment(it) }
+            )
+        }
+
+        // Sliding Details Dialog Overlay for selected Discussion detail
+        currentDiscussion?.let { discussion ->
+            BackHandler {
+                viewModel.selectDiscussion(null)
+            }
+            DiscussionDetailScreen(
+                discussion = discussion,
+                viewModel = viewModel,
+                onBack = { viewModel.selectDiscussion(null) }
             )
         }
 

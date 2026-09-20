@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.data.model.PostEntity
 import com.example.domain.model.AdvancedReputation
 import com.example.ui.theme.*
@@ -24,6 +25,7 @@ fun CommunityTabContent(
     reputations: Map<String, Int>,
     advancedReputations: Map<String, AdvancedReputation>
 ) {
+    val discussions by viewModel.allDiscussions.collectAsStateWithLifecycle()
     val trendingPosts = remember(posts) {
         posts.sortedByDescending { (it.upvotesCount - it.downvotesCount) + it.commentCount }.take(10)
     }
@@ -48,12 +50,44 @@ fun CommunityTabContent(
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                     Text(
-                        text = "Top discussions happening right now",
+                        text = "Actionable problem solving & trending discussions",
                         color = SoftText,
                         fontSize = 14.sp,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
                 }
+            }
+        }
+
+        // Actionable discussions section
+        if (discussions.isNotEmpty()) {
+            item {
+                Text(
+                    text = "Actionable Problem Discussions",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                )
+            }
+
+            items(discussions, key = { "disc_${it.id}" }) { discussion ->
+                DiscussionCard(
+                    discussion = discussion,
+                    onClick = { viewModel.selectDiscussion(discussion.id) },
+                    onUpvote = { viewModel.upvoteDiscussion(discussion.id) }
+                )
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Trending Thoughts & Debates",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
             }
         }
 

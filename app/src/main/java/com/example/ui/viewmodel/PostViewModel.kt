@@ -133,6 +133,24 @@ class PostViewModel(
 
     // Single post detail monitoring state
     private val _currentPostId = MutableStateFlow<Int?>(null)
+
+    // Single discussion detail monitoring state
+    private val _selectedDiscussionId = MutableStateFlow<Int?>(null)
+    val selectedDiscussionId: StateFlow<Int?> = _selectedDiscussionId.asStateFlow()
+
+    val currentDiscussion: StateFlow<Discussion?> = _selectedDiscussionId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(null)
+            else repository.getDiscussionById(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val currentDiscussionComments: StateFlow<List<CommentEntity>> = _selectedDiscussionId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyList())
+            else repository.getCommentsForPost(id)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
@@ -258,6 +276,75 @@ class PostViewModel(
 
     fun selectPost(postId: Int?) {
         _currentPostId.value = postId
+    }
+
+    fun selectDiscussion(discussionId: Int?) {
+        _selectedDiscussionId.value = discussionId
+    }
+
+    fun upvoteDiscussion(discussionId: Int) {
+        safeScope.launch { repository.upvoteDiscussion(discussionId) }
+    }
+
+    fun downvoteDiscussion(discussionId: Int) {
+        safeScope.launch { repository.downvoteDiscussion(discussionId) }
+    }
+
+    fun submitDiscussionComment(
+        discussionId: Int,
+        content: String,
+        author: String? = null,
+        isSolution: Boolean = false,
+        parentCommentId: Int? = null
+    ) {
+        if (!moderateContentUseCase.isContentSafe("", content)) {
+            return
+        }
+        safeScope.launch {
+            val currentUsername = myProfile.value?.displayName ?: myProfile.value?.username ?: "You"
+            val finalAuthor = author ?: currentUsername
+            val comment = CommentEntity(
+                postId = discussionId,
+                author = finalAuthor,
+                avatarSeed = if (finalAuthor == "You") "Y" else finalAuthor.first().toString().uppercase(),
+                content = content,
+                isSolution = isSolution,
+                parentCommentId = parentCommentId
+            )
+            repository.createComment(comment)
+            if (isSolution) {
+                repository.awardReputationPoint(
+                    userId = 1,
+                    points = 25,
+                    source = "ACTIONABLE_SOLUTION",
+                    description = "Contributed an actionable solution to problem #$discussionId"
+                )
+            }
+        }
+    }
+
+    fun contributeActionableSolution(
+        discussionId: Int,
+        title: String,
+        steps: String,
+        outcome: String,
+        parentCommentId: Int? = null
+    ) {
+        val formatted = buildString {
+            append("💡 Actionable Resolution: ").append(title.trim()).append("\n\n")
+            if (steps.isNotBlank()) {
+                append("📌 Implementation Steps:\n").append(steps.trim()).append("\n\n")
+            }
+            if (outcome.isNotBlank()) {
+                append("🎯 Expected Outcome & Impact:\n").append(outcome.trim())
+            }
+        }
+        submitDiscussionComment(
+            discussionId = discussionId,
+            content = formatted,
+            isSolution = true,
+            parentCommentId = parentCommentId
+        )
     }
 
     // Reaction Triggers delegating to UseCase
@@ -428,6 +515,128 @@ class PostViewModel(
                 )
             }
         }
+
+        // Initialize sample users and discussions for DiscussionFeedScreen and DiscussionDetailScreen
+        val defaultUsers = listOf(
+            com.example.data.model.User(
+                id = 1,
+                username = "elena_rostova",
+                displayName = "Dr. Elena Rostova",
+                bio = "Distributed Systems Researcher & Core Architect",
+                isVerified = true
+            ),
+            com.example.data.model.User(
+                id = 2,
+                username = "marcus_vance",
+                displayName = "Marcus Vance",
+                bio = "Staff SRE, cloud infrastructure and concurrency",
+                isVerified = true
+            ),
+            com.example.data.model.User(
+                id = 3,
+                username = "sarah_lin",
+                displayName = "Sarah Lin",
+                bio = "Community lead & civic tech researcher",
+                isVerified = false
+            )
+        )
+        repository.insertUsers(defaultUsers)
+
+        val defaultDiscussions = listOf(
+            Discussion(
+                id = 101,
+                authorId = 1,
+                title = "High Latency in Distributed State Synchronization Under High Churn",
+                content = "We have been observing substantial p99 latency spikes (exceeding 850ms) across geographically distributed node clusters during bursts of churn. The bottleneck appears during vector clock reconciliation and read-repair phases across regions with asymmetric bandwidth. We need concrete actionable architectural strategies to reduce reconciliation latency without sacrificing monotonic read consistency.",
+                category = "Architecture",
+                tags = "distributed-systems,concurrency,database,latency",
+                upvotes = 42,
+                downvotes = 3,
+                createdAt = System.currentTimeMillis() - 86400000
+            ),
+            Discussion(
+                id = 102,
+                authorId = 2,
+                title = "Mitigating Algorithmic Echo Chambers Without Degrading Organic Engagement",
+                content = "Current recommender algorithms optimize strictly for immediate engagement loops, which mathematically amplifies hyper-partisan echo chambers and extreme viewpoints. How can social platforms design serendipity heuristics and counter-perspective discovery into the core feed while keeping bounce rates acceptable?",
+                category = "Social Ethics",
+                tags = "ai-ethics,algorithms,social-media,society",
+                upvotes = 67,
+                downvotes = 5,
+                createdAt = System.currentTimeMillis() - 172800000
+            ),
+            Discussion(
+                id = 103,
+                authorId = 3,
+                title = "Affordable Microgrid Energy Storage Solutions for Remote Communities",
+                content = "Remote and off-grid mountain communities are heavily reliant on diesel generators despite having abundant seasonal hydro and solar potential. The primary challenge is short-duration vs long-duration energy storage degradation during freezing winters. Looking for tested, actionable solutions for modular thermal or flow-battery setups that can be maintained locally without specialized engineers.",
+                category = "Clean Tech",
+                tags = "energy,microgrids,sustainability,storage",
+                upvotes = 35,
+                downvotes = 1,
+                createdAt = System.currentTimeMillis() - 259200000
+            )
+        )
+        repository.insertDiscussions(defaultDiscussions)
+
+        // Seed nested comments for Discussion #101 to demonstrate recursive structure
+        val rootCommentId = 2001
+        repository.createComment(
+            CommentEntity(
+                id = rootCommentId,
+                postId = 101,
+                author = "Marcus Vance",
+                avatarSeed = "M",
+                content = "Have you evaluated state-based Conflict-free Replicated Data Types (CvRDTs) with delta-mutations? We eliminated our reconciliation lock bottleneck by transmitting only observed deltas instead of full causal states.",
+                timestamp = System.currentTimeMillis() - 72000000,
+                isSolution = false,
+                upvotesCount = 19
+            )
+        )
+
+        val childCommentId = 2002
+        repository.createComment(
+            CommentEntity(
+                id = childCommentId,
+                postId = 101,
+                author = "Dr. Elena Rostova",
+                avatarSeed = "E",
+                content = "We tested delta-CRDTs in initial benchmarks, but garbage collection of tombstones during network partitions caused memory ballooning. How did you handle tombstone compaction safely?",
+                timestamp = System.currentTimeMillis() - 65000000,
+                isSolution = false,
+                upvotesCount = 14,
+                parentCommentId = rootCommentId
+            )
+        )
+
+        val grandchildCommentId = 2003
+        repository.createComment(
+            CommentEntity(
+                id = grandchildCommentId,
+                postId = 101,
+                author = "Marcus Vance",
+                avatarSeed = "M",
+                content = "💡 Actionable Solution: Epoch-based Tombstone Pruning Protocol.\n\n1. Maintain an epoch timestamp watermark acknowledged by quorum.\n2. Purge tombstones older than maximum replication timeout (e.g. 7 days).\n3. Any disconnected partition lagging past the watermark must resync via full snapshot rather than delta catchup.\n\nThis reduced our memory overhead by 82% and dropped p99 to 110ms.",
+                timestamp = System.currentTimeMillis() - 50000000,
+                isSolution = true,
+                upvotesCount = 31,
+                parentCommentId = childCommentId
+            )
+        )
+
+        // Another root comment on Discussion #101
+        repository.createComment(
+            CommentEntity(
+                id = 2004,
+                postId = 101,
+                author = "Sarah Lin",
+                avatarSeed = "S",
+                content = "Could client-side predictive optimistic caching relieve the central read-repair pressure?",
+                timestamp = System.currentTimeMillis() - 40000000,
+                isSolution = false,
+                upvotesCount = 8
+            )
+        )
     }
 
     fun toggleBookmark(postId: Int) {

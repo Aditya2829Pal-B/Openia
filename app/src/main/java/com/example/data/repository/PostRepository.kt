@@ -28,8 +28,32 @@ class PostRepository(
 
     val allDiscussions: Flow<List<Discussion>> = discussionDao.getAllDiscussions()
 
+    fun getDiscussionById(id: Int): Flow<Discussion?> = discussionDao.getDiscussionByIdFlow(id)
+    suspend fun getDiscussionByIdDirect(id: Int): Discussion? = discussionDao.getDiscussionById(id)
+    suspend fun upvoteDiscussion(id: Int) = discussionDao.upvoteDiscussion(id)
+    suspend fun downvoteDiscussion(id: Int) = discussionDao.downvoteDiscussion(id)
+
     suspend fun insertDiscussion(discussion: Discussion) {
         discussionDao.insertDiscussion(discussion)
+    }
+
+    suspend fun insertDiscussions(discussions: List<Discussion>) {
+        discussionDao.insertDiscussions(discussions)
+    }
+
+    fun getUserById(id: Int): Flow<com.example.data.model.User?> = discussionDao.getUserByIdFlow(id)
+    suspend fun insertUser(user: com.example.data.model.User): Long = discussionDao.insertUser(user)
+    suspend fun insertUsers(users: List<com.example.data.model.User>) = discussionDao.insertUsers(users)
+
+    suspend fun awardReputationPoint(userId: Int, points: Int, source: String, description: String) {
+        discussionDao.insertReputationPoint(
+            com.example.data.model.ReputationPoint(
+                userId = userId,
+                points = points,
+                source = source,
+                description = description
+            )
+        )
     }
 
     val allPosts: Flow<List<PostEntity>> = postDao.getAllPostsFlow()
